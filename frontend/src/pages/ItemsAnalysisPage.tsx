@@ -169,7 +169,7 @@ const ItemsAnalysisPage = () => {
   console.log('🎨 RENDERIZANDO - filteredItems.length:', filteredItems.length, 'items.length:', items.length);
 
   return (
-    <div className="space-y-6">{console.log('📊 Na tabela, renderizando', filteredItems.length, 'itens')}
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
