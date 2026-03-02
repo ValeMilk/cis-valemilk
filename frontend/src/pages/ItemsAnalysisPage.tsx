@@ -411,7 +411,10 @@ const ItemsAnalysisPage = () => {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody 
+              key={`tbody-${filteredItems.length}-${searchTerm}-${tipoFilter}-${fornecedorFilter}-${classeFilter}-${prevFimFilter}`}
+              className="bg-white divide-y divide-gray-200"
+            >
               {filteredItems.length === 0 ? (
                 <tr>
                   <td colSpan={16} className="px-6 py-12 text-center text-gray-500">
@@ -424,7 +427,7 @@ const ItemsAnalysisPage = () => {
                   console.log(`🔸 Renderizando item ${index + 1}/${filteredItems.length}:`, item.codigo_item, item.fornecedor);
                   return (
                   <tr
-                    key={item.id}
+                    key={`${item.id}-${index}-filtered`}
                     className={`hover:bg-gray-50 ${
                       selectedItems.has(item.id) ? 'bg-blue-50' : ''
                     }`}
