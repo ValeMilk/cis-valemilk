@@ -261,28 +261,31 @@ const ItemsAnalysisPage = () => {
                   Cl
                 </th>
                 <th className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Abt
+                  Dep.Abt
                 </th>
                 <th className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Int
+                  Dep.Int
                 </th>
                 <th className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Ext
+                  Dep.Ext
                 </th>
                 <th className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Tot
+                  Sld.Tot
                 </th>
                 <th className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  G.M
+                  Giro M.
                 </th>
                 <th className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  M.T
+                  Méd.Tri
                 </th>
                 <th className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  R$
+                  Vlr Ult
                 </th>
                 <th className="px-0.5 py-1 text-center font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Data
+                  Dt Ult
+                </th>
+                <th className="px-0.5 py-1 text-center font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
+                  Prev.Fim
                 </th>
                 <th className="px-0.5 py-1 text-center font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
                   Qtd
@@ -292,7 +295,7 @@ const ItemsAnalysisPage = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={15} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={16} className="px-6 py-12 text-center text-gray-500">
                     <Package className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                     <p>Nenhum item encontrado</p>
                   </td>
@@ -363,6 +366,9 @@ const ItemsAnalysisPage = () => {
                     </td>
                     <td className="px-0.5 py-0.5 text-center text-gray-600" style={{ fontSize: '0.6rem' }}>
                       {formatDate(item.data_ultima_entrada)}
+                    </td>
+                    <td className="px-0.5 py-0.5 text-center text-gray-700 font-medium" style={{ fontSize: '0.6rem' }}>
+                      {item.previsao_fim_estoque || '-'}
                     </td>
                     <td className="px-0.5 py-0.5 text-center">
                       {selectedItems.has(item.id) ? (
