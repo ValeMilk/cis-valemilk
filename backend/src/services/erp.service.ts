@@ -235,4 +235,5 @@ export interface ERPItem {
   'Dt Ult Entrada': string;
   'Giro Mensal': string;
   'Média Giro Trimestre': string;
+  'Prev. Fim Estoque': string;
 }
