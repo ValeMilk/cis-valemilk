@@ -22,6 +22,7 @@ const ItemsAnalysisPage = () => {
   }, []);
 
   useEffect(() => {
+    console.log('🔄 useEffect disparado - mudança em filtros detectada');
     filterItems();
   }, [items, searchTerm, tipoFilter, fornecedorFilter, classeFilter, prevFimFilter]);
 
@@ -165,8 +166,10 @@ const ItemsAnalysisPage = () => {
     );
   }
 
+  console.log('🎨 RENDERIZANDO - filteredItems.length:', filteredItems.length, 'items.length:', items.length);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6">{console.log('📊 Na tabela, renderizando', filteredItems.length, 'itens')}
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
