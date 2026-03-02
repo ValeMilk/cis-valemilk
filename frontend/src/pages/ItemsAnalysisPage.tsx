@@ -41,6 +41,9 @@ const ItemsAnalysisPage = () => {
   const filterItems = () => {
     let filtered = [...items];
 
+    console.log('🔍 Aplicando filtros:', { searchTerm, tipoFilter, fornecedorFilter, classeFilter, prevFimFilter });
+    console.log('📦 Total items antes:', items.length);
+
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
@@ -48,18 +51,22 @@ const ItemsAnalysisPage = () => {
           item.descricao.toLowerCase().includes(term) ||
           item.codigo_item.toLowerCase().includes(term)
       );
+      console.log('✅ Após busca:', filtered.length);
     }
 
     if (tipoFilter) {
       filtered = filtered.filter((item) => item.tipo === tipoFilter);
+      console.log('✅ Após filtro tipo:', filtered.length);
     }
 
     if (fornecedorFilter) {
-      filtered = filtered.filter((item) => item.fornecedor.toLowerCase().includes(fornecedorFilter.toLowerCase()));
+      filtered = filtered.filter((item) => item.fornecedor === fornecedorFilter);
+      console.log('✅ Após filtro fornecedor:', filtered.length, 'Buscando:', fornecedorFilter);
     }
 
     if (classeFilter) {
       filtered = filtered.filter((item) => item.classe_abc === classeFilter);
+      console.log('✅ Após filtro classe:', filtered.length);
     }
 
     if (prevFimFilter) {
@@ -70,8 +77,10 @@ const ItemsAnalysisPage = () => {
         if (prevFimFilter === 'Com Data') return prevFim !== 'Sem Estoque' && prevFim !== 'Sem Consumo' && prevFim !== '-';
         return true;
       });
+      console.log('✅ Após filtro prev.fim:', filtered.length);
     }
 
+    console.log('🎯 Total filtrado final:', filtered.length);
     setFilteredItems(filtered);
   };
 
