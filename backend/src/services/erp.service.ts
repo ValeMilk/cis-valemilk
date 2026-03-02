@@ -181,40 +181,42 @@ export const getItemsQuery = (): string => {
         FORMAT(ISNULL(es.SALDO_DEP_1, 0), 'N3', 'pt-BR') AS [Dep. Aberto],
         FORMAT(ISNULL(es.SALDO_DEP_7, 0), 'N3', 'pt-BR') AS [Dep. Fechado (Interno)],
         FORMAT(ISNULL(es.SALDO_DEP_8, 0), 'N3', 'pt-BR') AS [Dep. Fechado (Externo)],
-        FORMAT(Calc1.SaldoTotal, 'N3', 'pt-BR') AS [Saldo Total],
-            
-  'Prev. Fim Estoque': string;
+        FORMAT(ISNULL(es.SALDO_DEP_1, 0) + ISNULL(es.SALDO_DEP_7, 0) + ISNULL(es.SALDO_DEP_8, 0), 'N3', 'pt-BR') AS [Saldo Total],
+        
         REPLACE(FORMAT(upf.M01_PRECOU, 'C', 'pt-BR'), 'R$', 'R$ ') AS [Valor Ult Entrada],
         CONVERT(VARCHAR, upf.M00_ENTSAI, 103) AS [Dt Ult Entrada],
         
-        FORMAT(Calc1.GiroMensal, 'N3', 'pt-BR') AS [Giro Mensal],
-        FORMAT(Calc1.GiroTrimestral, 'N3', 'pt-BR') AS [Média Giro Trimestre],
+        FORMAT(ISNULL(CASE WHEN upf.E02_TIPO = 7 THEN guc.GIRO_30_DIAS ELSE ge.GIRO_30_DIAS END, 0), 'N3', 'pt-BR') AS [Giro Mensal],
+        FORMAT(ISNULL(CASE WHEN upf.E02_TIPO = 7 THEN guc.MEDIA_GIRO_TRIMESTRE ELSE ge.MEDIA_GIRO_TRIMESTRE END, 0), 'N3', 'pt-BR') AS [Média Giro Trimestre],
         
         -- Lógica da Previsão de Fim de Estoque
         CASE 
-            WHEN Calc1.SaldoTotal <= 0 THEN 'Sem Estoque'
-            WHEN Calc2.MaiorGiro <= 0 THEN 'Sem Consumo'
-            ELSE CONVERT(VARCHAR, DATEADD(DAY, CAST(CEILING((Calc1.SaldoTotal * 30.0) / Calc2.MaiorGiro) AS INT), GETDATE()), 103)
+            WHEN (ISNULL(es.SALDO_DEP_1, 0) + ISNULL(es.SALDO_DEP_7, 0) + ISNULL(es.SALDO_DEP_8, 0)) <= 0 THEN 'Sem Estoque'
+            WHEN (
+                CASE 
+                    WHEN ISNULL(CASE WHEN upf.E02_TIPO = 7 THEN guc.GIRO_30_DIAS ELSE ge.GIRO_30_DIAS END, 0) > 
+                         ISNULL(CASE WHEN upf.E02_TIPO = 7 THEN guc.MEDIA_GIRO_TRIMESTRE ELSE ge.MEDIA_GIRO_TRIMESTRE END, 0)
+                    THEN ISNULL(CASE WHEN upf.E02_TIPO = 7 THEN guc.GIRO_30_DIAS ELSE ge.GIRO_30_DIAS END, 0)
+                    ELSE ISNULL(CASE WHEN upf.E02_TIPO = 7 THEN guc.MEDIA_GIRO_TRIMESTRE ELSE ge.MEDIA_GIRO_TRIMESTRE END, 0)
+                END
+            ) <= 0 THEN 'Sem Consumo'
+            ELSE CONVERT(VARCHAR, DATEADD(DAY, 
+                CAST(CEILING(
+                    (ISNULL(es.SALDO_DEP_1, 0) + ISNULL(es.SALDO_DEP_7, 0) + ISNULL(es.SALDO_DEP_8, 0)) * 30.0 / 
+                    (CASE 
+                        WHEN ISNULL(CASE WHEN upf.E02_TIPO = 7 THEN guc.GIRO_30_DIAS ELSE ge.GIRO_30_DIAS END, 0) > 
+                             ISNULL(CASE WHEN upf.E02_TIPO = 7 THEN guc.MEDIA_GIRO_TRIMESTRE ELSE ge.MEDIA_GIRO_TRIMESTRE END, 0)
+                        THEN ISNULL(CASE WHEN upf.E02_TIPO = 7 THEN guc.GIRO_30_DIAS ELSE ge.GIRO_30_DIAS END, 0)
+                        ELSE ISNULL(CASE WHEN upf.E02_TIPO = 7 THEN guc.MEDIA_GIRO_TRIMESTRE ELSE ge.MEDIA_GIRO_TRIMESTRE END, 0)
+                    END)
+                ) AS INT), 
+                GETDATE()), 103)
         END AS [Prev. Fim Estoque]
     
     FROM UltimoPorFornecedor upf
     LEFT JOIN GiroEstoque ge ON upf.M01_ID_E02 = ge.P21_ID_E02
     LEFT JOIN GiroUsoConsumo guc ON upf.M01_ID_E02 = guc.M01_ID_E02
     LEFT JOIN EstoqueSaldo es ON upf.M01_ID_E02 = es.E03_ID_E02
-    
-    -- CROSS APPLY 1: Unifica as regras de Saldo e Giro para facilitar o cálculo final
-    CROSS APPLY (
-        SELECT 
-            ISNULL(es.SALDO_DEP_1, 0) + ISNULL(es.SALDO_DEP_7, 0) + ISNULL(es.SALDO_DEP_8, 0) AS SaldoTotal,
-            ISNULL(CASE WHEN upf.E02_TIPO = 7 THEN guc.GIRO_30_DIAS ELSE ge.GIRO_30_DIAS END, 0) AS GiroMensal,
-            ISNULL(CASE WHEN upf.E02_TIPO = 7 THEN guc.MEDIA_GIRO_TRIMESTRE ELSE ge.MEDIA_GIRO_TRIMESTRE END, 0) AS GiroTrimestral
-    ) Calc1
-    
-    -- CROSS APPLY 2: Define qual é o maior giro entre o Mensal e o Trimestral
-    CROSS APPLY (
-        SELECT 
-            CASE WHEN Calc1.GiroMensal > Calc1.GiroTrimestral THEN Calc1.GiroMensal ELSE Calc1.GiroTrimestral END AS MaiorGiro
-    ) Calc2
     
     WHERE upf.rn = 1 
     ORDER BY Cod ASC, [Dt Ult Entrada] DESC;
