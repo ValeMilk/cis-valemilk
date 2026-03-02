@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Save, Send, Package } from 'lucide-react';
+import { ArrowLeft, Trash2, Save, Send, Package } from 'lucide-react';
 import api from '../services/api';
 import { Item, Fornecedor } from '../types';
 import { useAuth } from '../contexts/AuthContext';

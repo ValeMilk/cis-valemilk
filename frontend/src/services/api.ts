@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Em produção (container), usa URL relativa para nginx fazer proxy
 // Em desenvolvimento, usa a URL configurada ou fallback localhost:5888
-const getBaseURL = () => {
+const getBaseURL = (): string => {
   if (import.meta.env.PROD) {
     return '/api'; // Nginx faz proxy para backend
   }

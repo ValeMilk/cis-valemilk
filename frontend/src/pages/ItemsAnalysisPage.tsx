@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, Search, Filter, ShoppingCart, Calendar, DollarSign } from 'lucide-react';
+import { Package, Search, Filter, ShoppingCart } from 'lucide-react';
 import api from '../services/api';
 import { Item } from '../types';
 
