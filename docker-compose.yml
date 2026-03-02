@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: cis-backend
+    ports:
+      - "5888:5888"
+    environment:
+      - NODE_ENV=production
+      - PORT=5888
+      - MONGODB_URI=mongodb+srv://nicolasimoes_db_user:qaxUY2MrNZkkJ2Sd@cluster0.frsauzp.mongodb.net/valemilk_cis?retryWrites=true&w=majority&appName=Cluster0
+      - DB_NAME=valemilk_cis
+      - JWT_SECRET=cis-valemilk-super-secret-key-2026-change-in-production-min-32-chars
+      - JWT_EXPIRES_IN=24h
+      - CORS_ORIGINS=http://localhost:8886,http://72.61.62.17:8886
+      - ERP_SERVER=10.1.0.3\\SQLSTANDARD
+      - ERP_DATABASE=dbactions
+      - ERP_USER=analistarpt
+      - ERP_PASSWORD=mM=DU9lUd3C$$qb@
+      - ERP_PORT=1433
+    restart: unless-stopped
+    networks:
+      - cis-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5888/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build: ./frontend
+    container_name: cis-frontend
+    ports:
+      - "8886:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - cis-network
+
+networks:
+  cis-network:
+    driver: bridge
