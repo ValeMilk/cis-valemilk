@@ -10,7 +10,10 @@ const ItemsAnalysisPage = () => {
   const [filteredItems, setFilteredItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [tipoFilter, setTipoFilter] = useState<string>('');
+  const [fornecedorFilter, setFornecedorFilter] = useState<string>('');
   const [classeFilter, setClasseFilter] = useState<string>('');
+  const [prevFimFilter, setPrevFimFilter] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
 
@@ -20,7 +23,7 @@ const ItemsAnalysisPage = () => {
 
   useEffect(() => {
     filterItems();
-  }, [items, searchTerm, classeFilter]);
+  }, [items, searchTerm, tipoFilter, fornecedorFilter, classeFilter, prevFimFilter]);
 
   const fetchItems = async () => {
     try {
@@ -47,12 +50,34 @@ const ItemsAnalysisPage = () => {
       );
     }
 
+    if (tipoFilter) {
+      filtered = filtered.filter((item) => item.tipo === tipoFilter);
+    }
+
+    if (fornecedorFilter) {
+      filtered = filtered.filter((item) => item.fornecedor.toLowerCase().includes(fornecedorFilter.toLowerCase()));
+    }
+
     if (classeFilter) {
       filtered = filtered.filter((item) => item.classe_abc === classeFilter);
     }
 
+    if (prevFimFilter) {
+      filtered = filtered.filter((item) => {
+        const prevFim = item.previsao_fim_estoque || '';
+        if (prevFimFilter === 'Sem Estoque') return prevFim === 'Sem Estoque';
+        if (prevFimFilter === 'Sem Consumo') return prevFim === 'Sem Consumo';
+        if (prevFimFilter === 'Com Data') return prevFim !== 'Sem Estoque' && prevFim !== 'Sem Consumo' && prevFim !== '-';
+        return true;
+      });
+    }
+
     setFilteredItems(filtered);
   };
+
+  // Get unique tipos and fornecedores for filters
+  const uniqueTipos = Array.from(new Set(items.map(item => item.tipo))).sort();
+  const uniqueFornecedores = Array.from(new Set(items.map(item => item.fornecedor))).sort();
 
   const toggleItemSelection = (itemId: string) => {
     const newSelected = new Set(selectedItems);
@@ -154,11 +179,11 @@ const ItemsAnalysisPage = () => {
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Search */}
-          <div className="md:col-span-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Search - Descrição/Código */}
+          <div className="lg:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Buscar Item
+              Buscar Item (Descrição/Código)
             </label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -169,6 +194,50 @@ const ItemsAnalysisPage = () => {
                 placeholder="Código ou descrição..."
                 className="pl-10 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
+            </div>
+          </div>
+
+          {/* Tipo Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tipo
+            </label>
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <select
+                value={tipoFilter}
+                onChange={(e) => setTipoFilter(e.target.value)}
+                className="pl-10 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
+              >
+                <option value="">Todos os Tipos</option>
+                {uniqueTipos.map((tipo) => (
+                  <option key={tipo} value={tipo}>
+                    {tipo}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Fornecedor Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Fornecedor
+            </label>
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <select
+                value={fornecedorFilter}
+                onChange={(e) => setFornecedorFilter(e.target.value)}
+                className="pl-10 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
+              >
+                <option value="">Todos os Fornecedores</option>
+                {uniqueFornecedores.map((fornecedor) => (
+                  <option key={fornecedor} value={fornecedor}>
+                    {fornecedor}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -191,7 +260,45 @@ const ItemsAnalysisPage = () => {
               </select>
             </div>
           </div>
+
+          {/* Previsão Fim Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Prev. Fim Estoque
+            </label>
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <select
+                value={prevFimFilter}
+                onChange={(e) => setPrevFimFilter(e.target.value)}
+                className="pl-10 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
+              >
+                <option value="">Todos</option>
+                <option value="Sem Estoque">Sem Estoque</option>
+                <option value="Sem Consumo">Sem Consumo</option>
+                <option value="Com Data">Com Data Prevista</option>
+              </select>
+            </div>
+          </div>
         </div>
+
+        {/* Clear Filters Button */}
+        {(searchTerm || tipoFilter || fornecedorFilter || classeFilter || prevFimFilter) && (
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setTipoFilter('');
+                setFornecedorFilter('');
+                setClasseFilter('');
+                setPrevFimFilter('');
+              }}
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              Limpar Filtros
+            </button>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t">
