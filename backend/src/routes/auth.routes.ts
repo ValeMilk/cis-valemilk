@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { User } from '../models/User';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 
@@ -29,14 +29,17 @@ router.post('/login', async (req, res) => {
     }
 
     // Generate token
+    const signOptions: SignOptions = { 
+      expiresIn: '24h' 
+    };
     const token = jwt.sign(
       { 
         id: user._id, 
         email: user.email, 
         perfil: user.perfil 
       },
-      process.env.JWT_SECRET!,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+      process.env.JWT_SECRET as string,
+      signOptions
     );
 
     res.json({
