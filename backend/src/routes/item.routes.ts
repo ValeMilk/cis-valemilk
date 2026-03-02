@@ -23,6 +23,7 @@ interface Item {
   giro_mensal: number;
   media_giro_trimestre: number;
   data_ultima_entrada: string;
+  previsao_fim_estoque: string;
 }
 
 // Função auxiliar para parsear valores formatados (de pt-BR para número)
@@ -68,7 +69,8 @@ const mapERPItemToItem = (erpItem: ERPItem): Item => {
     saldo_dep_fechado_externo: depFechadoExterno,
     giro_mensal: giroMensal,
     media_giro_trimestre: mediaGiroTrimestre,
-    data_ultima_entrada: erpItem['Dt Ult Entrada'] || ''
+    data_ultima_entrada: erpItem['Dt Ult Entrada'] || '',
+    previsao_fim_estoque: erpItem['Prev. Fim Estoque'] || 'Sem Consumo'
   };
 };
 

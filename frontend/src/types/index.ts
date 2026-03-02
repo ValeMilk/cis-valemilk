@@ -77,6 +77,7 @@ export interface Item {
   giro_mensal: number;
   media_giro_trimestre: number;
   data_ultima_entrada: string;
+  previsao_fim_estoque: string;
 }
 
 export interface Fornecedor {
