@@ -18,7 +18,7 @@ services:
       - ERP_DATABASE=dbactions
       - ERP_USER=analistarpt
       - ERP_PASSWORD=mM=DU9lUd3C$$qb@
-      - ERP_PORT=1433
+      - ERP_PORT=50140
     restart: unless-stopped
     networks:
       - cis-network

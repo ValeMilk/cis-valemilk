@@ -6,14 +6,15 @@ dotenv.config();
 
 const serverAddress = process.env.ERP_SERVER || 'localhost';
 const hasInstanceName = serverAddress.includes('\\');
+const erpPort = process.env.ERP_PORT ? parseInt(process.env.ERP_PORT) : undefined;
 
 const config: sql.config = {
   server: serverAddress,
   database: process.env.ERP_DATABASE || 'ERP_DB',
   user: process.env.ERP_USER || 'sa',
   password: process.env.ERP_PASSWORD || '',
-  // Don't specify port when using instance name (e.g., SERVER\INSTANCE)
-  ...(hasInstanceName ? {} : { port: parseInt(process.env.ERP_PORT || '1433') }),
+  // Use port if specified, even with instance name for VPN scenarios
+  ...(erpPort ? { port: erpPort } : {}),
   options: {
     encrypt: false,
     trustServerCertificate: true,
