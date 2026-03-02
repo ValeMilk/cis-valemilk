@@ -420,7 +420,9 @@ const ItemsAnalysisPage = () => {
                   </td>
                 </tr>
               ) : (
-                filteredItems.map((item) => (
+                filteredItems.map((item, index) => {
+                  console.log(`🔸 Renderizando item ${index + 1}/${filteredItems.length}:`, item.codigo_item, item.fornecedor);
+                  return (
                   <tr
                     key={item.id}
                     className={`hover:bg-gray-50 ${
@@ -504,7 +506,8 @@ const ItemsAnalysisPage = () => {
                       )}
                     </td>
                   </tr>
-                ))
+                );
+                })
               )}
             </tbody>
           </table>
