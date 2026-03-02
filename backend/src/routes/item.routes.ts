@@ -93,7 +93,8 @@ const mockItems: Item[] = [
     saldo_dep_fechado_externo: 20,
     giro_mensal: 200,
     media_giro_trimestre: 180,
-    data_ultima_entrada: '15/02/2026'
+    data_ultima_entrada: '15/02/2026',
+    previsao_fim_estoque: '20/03/2026'
   },
   {
     id: '2',
@@ -112,7 +113,8 @@ const mockItems: Item[] = [
     saldo_dep_fechado_externo: 5000,
     giro_mensal: 50000,
     media_giro_trimestre: 48000,
-    data_ultima_entrada: '20/02/2026'
+    data_ultima_entrada: '20/02/2026',
+    previsao_fim_estoque: '10/03/2026'
   }
 ];
 
