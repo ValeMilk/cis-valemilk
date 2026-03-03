@@ -16,9 +16,13 @@ const PedidoPrintView = forwardRef<HTMLDivElement, PedidoPrintViewProps>(
         {/* Cabeçalho */}
         <div className="border-b-4 border-blue-600 pb-6 mb-6">
           <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-3xl font-bold text-blue-600">VALE MILK</h1>
-              <p className="text-sm text-gray-600 mt-1">Pedido de Compra</p>
+            <div className="flex items-center gap-4">
+              <img 
+                src="/assets/valemilk-logo.png" 
+                alt="Vale Milk" 
+                className="h-16 w-auto"
+              />
+              <p className="text-sm text-gray-600">Pedido de Compra</p>
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold text-gray-800">{pedido.idCompra}</div>
