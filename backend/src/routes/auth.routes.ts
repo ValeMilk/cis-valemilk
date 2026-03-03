@@ -9,18 +9,12 @@ const router = Router();
 // Login
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email } = req.body;
 
     // Find user
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ message: 'Credenciais inválidas' });
-    }
-
-    // Check password
-    const isValid = await bcrypt.compare(password, user.hashed_password);
-    if (!isValid) {
-      return res.status(401).json({ message: 'Credenciais inválidas' });
+      return res.status(401).json({ message: 'Email não encontrado' });
     }
 
     // Check if active
