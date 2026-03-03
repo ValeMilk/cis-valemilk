@@ -467,34 +467,34 @@ const ItemsAnalysisPage = () => {
                   Cl
                 </th>
                 <th className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Dep.Abt
+                  Dep.Aberto
                 </th>
                 <th className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Dep.Int
+                  Dep.Interno
                 </th>
                 <th className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Dep.Ext
+                  Dep.Externo
                 </th>
                 <th className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Sld.Tot
+                  Saldo Total
                 </th>
                 <th className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Giro M.
+                  Giro Mensal
                 </th>
                 <th className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Méd.Tri
+                  Méd Giro Trimestre
                 </th>
                 <th className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Vlr Ult
+                  Vlr Ultima Entrada
                 </th>
                 <th className="px-0.5 py-1 text-center font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Dt Ult
+                  Dt Ultima Entrada
                 </th>
                 <th className="px-0.5 py-1 text-center font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Prev.Fim
+                  Previsão Fim
                 </th>
                 <th className="px-0.5 py-1 text-center font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Qtd
+                  Quantidade
                 </th>
               </tr>
             </thead>
