@@ -21,6 +21,7 @@ export interface IHistoricoStatus {
 }
 
 export interface IPedido extends Document {
+  idCompra: string;
   numero: string;
   comprador_id: Types.ObjectId;
   comprador_nome: string;
@@ -35,6 +36,7 @@ export interface IPedido extends Document {
 }
 
 const pedidoSchema = new Schema<IPedido>({
+  idCompra: { type: String, required: true, unique: true },
   numero: { type: String, required: true, unique: true },
   comprador_id: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   comprador_nome: { type: String, required: true },

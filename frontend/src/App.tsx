@@ -3,6 +3,7 @@ import { useAuth } from './contexts/AuthContext';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import PedidosPage from './pages/PedidosPage';
+import PedidoDetailPage from './pages/PedidoDetailPage';
 import ItemsAnalysisPage from './pages/ItemsAnalysisPage';
 import CreatePedidoPage from './pages/CreatePedidoPage';
 import FornecedoresPage from './pages/FornecedoresPage';
@@ -44,6 +45,26 @@ function App() {
         }
       />
       <Route
+        path="/pedidos/novo"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <CreatePedidoPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/pedidos/:id"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <PedidoDetailPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/items"
         element={
           <ProtectedRoute>
@@ -59,16 +80,6 @@ function App() {
           <ProtectedRoute>
             <Layout>
               <FornecedoresPage />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/pedidos/novo"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <CreatePedidoPage />
             </Layout>
           </ProtectedRoute>
         }

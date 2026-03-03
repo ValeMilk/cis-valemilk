@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trash2, Save, Send, Package } from 'lucide-react';
+import { ArrowLeft, Trash2, Save, Package } from 'lucide-react';
 import api from '../services/api';
 import { Item, Fornecedor } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -86,7 +86,7 @@ const CreatePedidoPage = () => {
     setItems(items.filter((_, i) => i !== index));
   };
 
-  const handleSaveDraft = async () => {
+  const handleCreatePedido = async () => {
     if (!fornecedorId) {
       alert('Por favor, selecione um fornecedor');
       return;
@@ -106,64 +106,22 @@ const CreatePedidoPage = () => {
       const pedidoData = {
         fornecedor: fornecedorNome,
         observacao: observacao.trim(),
+        valor_total: 0,
         itens: items.map((pi) => ({
           item_id: pi.item.id,
           codigo_item: pi.item.codigo_item,
           descricao: pi.item.descricao,
           unidade_medida: pi.item.unidade_medida,
           quantidade_solicitada: pi.quantidade,
+          preco_unitario: 0,
+          valor_total: 0,
         })),
       };
 
       const response = await api.post('/pedidos', pedidoData);
-      alert('Pedido salvo como rascunho com sucesso!');
+      sessionStorage.removeItem('pedidoItems');
+      alert('Pedido criado com sucesso!');
       navigate(`/pedidos/${response.data._id}`);
-    } catch (error: any) {
-      console.error('Erro ao salvar pedido:', error);
-      alert(error.response?.data?.message || 'Erro ao salvar pedido');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmitForApproval = async () => {
-    if (!fornecedorId) {
-      alert('Por favor, selecione um fornecedor');
-      return;
-    }
-
-    if (items.length === 0) {
-      alert('Adicione pelo menos um item ao pedido');
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const fornecedorSelecionado = fornecedores.find(f => f._id === fornecedorId);
-      const fornecedorNome = fornecedorSelecionado?.nomeFantasia || fornecedorSelecionado?.razaoSocial || '';
-
-      // Primeiro cria o pedido
-      const pedidoData = {
-        fornecedor: fornecedorNome,
-        observacao: observacao.trim(),
-        itens: items.map((pi) => ({
-          item_id: pi.item.id,
-          codigo_item: pi.item.codigo_item,
-          descricao: pi.item.descricao,
-          unidade_medida: pi.item.unidade_medida,
-          quantidade_solicitada: pi.quantidade,
-        })),
-      };
-
-      const response = await api.post('/pedidos', pedidoData);
-      const pedidoId = response.data._id;
-
-      // Depois envia para aprovação
-      await api.post(`/pedidos/${pedidoId}/enviar-aprovacao`);
-
-      alert('Pedido criado e enviado para aprovação com sucesso!');
-      navigate(`/pedidos/${pedidoId}`);
     } catch (error: any) {
       console.error('Erro ao criar pedido:', error);
       alert(error.response?.data?.message || 'Erro ao criar pedido');
@@ -348,20 +306,12 @@ const CreatePedidoPage = () => {
           Cancelar
         </button>
         <button
-          onClick={handleSaveDraft}
-          disabled={loading}
-          className="flex items-center gap-2 px-6 py-3 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
-        >
-          <Save className="w-5 h-5" />
-          {loading ? 'Salvando...' : 'Salvar Rascunho'}
-        </button>
-        <button
-          onClick={handleSubmitForApproval}
+          onClick={handleCreatePedido}
           disabled={loading}
           className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
         >
-          <Send className="w-5 h-5" />
-          {loading ? 'Enviando...' : 'Enviar para Aprovação'}
+          <Save className="w-5 h-5" />
+          {loading ? 'Criando...' : 'Criar Pedido'}
         </button>
       </div>
     </div>

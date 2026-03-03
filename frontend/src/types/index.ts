@@ -46,6 +46,7 @@ export interface HistoricoStatus {
 
 export interface Pedido {
   _id: string;
+  idCompra: string;
   numero: string;
   comprador_id: string;
   comprador_nome: string;

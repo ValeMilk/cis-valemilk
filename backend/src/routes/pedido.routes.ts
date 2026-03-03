@@ -48,14 +48,16 @@ router.post('/', authMiddleware, requireRole(PerfilEnum.COMPRADOR, PerfilEnum.AD
       return res.status(404).json({ message: 'Usuário não encontrado' });
     }
 
-    // Generate numero
+    // Generate numero and idCompra
     const count = await Pedido.countDocuments();
     const ano = new Date().getFullYear();
     const mes = String(new Date().getMonth() + 1).padStart(2, '0');
     const numero = `OC-${ano}-${mes}-${String(count + 1).padStart(3, '0')}`;
+    const idCompra = `PC${ano}${String(count + 1).padStart(4, '0')}`;
 
     const pedido = await Pedido.create({
       ...req.body,
+      idCompra,
       numero,
       comprador_id: user._id,
       comprador_nome: user.nome,
