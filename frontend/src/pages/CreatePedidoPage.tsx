@@ -8,7 +8,6 @@ import { useAuth } from '../contexts/AuthContext';
 interface PedidoItem {
   item: Item;
   quantidade: number;
-  valor_unitario: number;
 }
 
 const CreatePedidoPage = () => {
@@ -31,7 +30,6 @@ const CreatePedidoPage = () => {
       const pedidoItems: PedidoItem[] = selectedItems.map((si: any) => ({
         item: si.item,
         quantidade: si.quantidade,
-        valor_unitario: si.item.valorUltimaEntrada,
       }));
       setItems(pedidoItems);
       sessionStorage.removeItem('selectedItems');
@@ -40,8 +38,39 @@ const CreatePedidoPage = () => {
 
   const fetchFornecedores = async () => {
     try {
-      const response = await api.get('/fornecedores?ativo=true');
-      setFornecedores(response.data);
+      // Buscar fornecedores do MongoDB
+      const mongoResponse = await api.get('/fornecedores?ativo=true');
+      const mongoFornecedores = mongoResponse.data;
+
+      // Buscar itens do ERP para extrair fornecedores únicos
+      const itemsResponse = await api.get('/items');
+      const erpItems = itemsResponse.data;
+      
+      // Extrair fornecedores únicos do ERP
+      const erpFornecedoresSet = new Set<string>();
+      erpItems.forEach((item: any) => {
+        if (item.fornecedor && item.fornecedor.trim()) {
+          erpFornecedoresSet.add(item.fornecedor.trim());
+        }
+      });
+
+      // Converter fornecedores do ERP para o formato esperado
+      const erpFornecedores = Array.from(erpFornecedoresSet).map(nome => ({
+        _id: `erp-${nome}`,
+        nomeFantasia: nome,
+        razaoSocial: nome,
+        isFromERP: true
+      }));
+
+      // Combinar e ordenar alfabeticamente
+      const todosFornecedores = [...mongoFornecedores, ...erpFornecedores]
+        .sort((a, b) => {
+          const nomeA = a.nomeFantasia || a.razaoSocial || '';
+          const nomeB = b.nomeFantasia || b.razaoSocial || '';
+          return nomeA.localeCompare(nomeB);
+        });
+
+      setFornecedores(todosFornecedores);
     } catch (error) {
       console.error('Erro ao buscar fornecedores:', error);
     }
@@ -53,21 +82,8 @@ const CreatePedidoPage = () => {
     setItems(newItems);
   };
 
-  const updateValorUnitario = (index: number, value: number) => {
-    const newItems = [...items];
-    newItems[index].valor_unitario = Math.max(0, value);
-    setItems(newItems);
-  };
-
   const removeItem = (index: number) => {
     setItems(items.filter((_, i) => i !== index));
-  };
-
-  const calculateTotal = () => {
-    return items.reduce(
-      (sum, item) => sum + item.quantidade * item.valor_unitario,
-      0
-    );
   };
 
   const handleSaveDraft = async () => {
@@ -96,7 +112,6 @@ const CreatePedidoPage = () => {
           descricao: pi.item.descricao,
           unidade_medida: pi.item.unidade_medida,
           quantidade_solicitada: pi.quantidade,
-          valor_unitario: pi.valor_unitario,
         })),
       };
 
@@ -138,7 +153,6 @@ const CreatePedidoPage = () => {
           descricao: pi.item.descricao,
           unidade_medida: pi.item.unidade_medida,
           quantidade_solicitada: pi.quantidade,
-          valor_unitario: pi.valor_unitario,
         })),
       };
 
@@ -156,13 +170,6 @@ const CreatePedidoPage = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
   };
 
   if (items.length === 0) {
@@ -291,12 +298,6 @@ const CreatePedidoPage = () => {
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
                   Quantidade
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                  Valor Unit.
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                  Total
-                </th>
                 <th className="px-6 py-3"></th>
               </tr>
             </thead>
@@ -322,19 +323,6 @@ const CreatePedidoPage = () => {
                     />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={pedidoItem.valor_unitario}
-                      onChange={(e) => updateValorUnitario(index, parseFloat(e.target.value))}
-                      className="w-32 border border-gray-300 rounded px-3 py-1 text-sm text-right focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 text-right">
-                    {formatCurrency(pedidoItem.quantidade * pedidoItem.valor_unitario)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
                     <button
                       onClick={() => removeItem(index)}
                       className="text-red-600 hover:text-red-800"
@@ -346,17 +334,6 @@ const CreatePedidoPage = () => {
                 </tr>
               ))}
             </tbody>
-            <tfoot className="bg-gray-50">
-              <tr>
-                <td colSpan={5} className="px-6 py-4 text-right text-sm font-semibold text-gray-900">
-                  Valor Total do Pedido:
-                </td>
-                <td className="px-6 py-4 text-right text-lg font-bold text-blue-600">
-                  {formatCurrency(calculateTotal())}
-                </td>
-                <td></td>
-              </tr>
-            </tfoot>
           </table>
         </div>
       </div>
