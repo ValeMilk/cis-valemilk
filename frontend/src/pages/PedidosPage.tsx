@@ -1,32 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { Pedido, StatusPedido } from '../types';
+import { Pedido } from '../types';
 import { Plus, Eye, Search } from 'lucide-react';
-
-const statusLabels: Record<StatusPedido, string> = {
-  [StatusPedido.RASCUNHO]: 'Rascunho',
-  [StatusPedido.AGUARDANDO_APROVACAO]: 'Aguardando Aprovação',
-  [StatusPedido.APROVADO]: 'Aprovado',
-  [StatusPedido.REPROVADO]: 'Reprovado',
-  [StatusPedido.ENVIADO]: 'Enviado',
-  [StatusPedido.CONFIRMADO]: 'Confirmado',
-  [StatusPedido.RECEBIDO_PARCIAL]: 'Recebido Parcial',
-  [StatusPedido.RECEBIDO_COMPLETO]: 'Recebido Completo',
-  [StatusPedido.CANCELADO]: 'Cancelado',
-};
-
-const statusColors: Record<StatusPedido, string> = {
-  [StatusPedido.RASCUNHO]: 'bg-gray-100 text-gray-800',
-  [StatusPedido.AGUARDANDO_APROVACAO]: 'bg-yellow-100 text-yellow-800',
-  [StatusPedido.APROVADO]: 'bg-green-100 text-green-800',
-  [StatusPedido.REPROVADO]: 'bg-red-100 text-red-800',
-  [StatusPedido.ENVIADO]: 'bg-blue-100 text-blue-800',
-  [StatusPedido.CONFIRMADO]: 'bg-green-100 text-green-800',
-  [StatusPedido.RECEBIDO_PARCIAL]: 'bg-orange-100 text-orange-800',
-  [StatusPedido.RECEBIDO_COMPLETO]: 'bg-green-100 text-green-800',
-  [StatusPedido.CANCELADO]: 'bg-gray-100 text-gray-800',
-};
 
 export default function PedidosPage() {
   const navigate = useNavigate();
