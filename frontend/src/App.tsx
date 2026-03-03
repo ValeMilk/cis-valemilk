@@ -6,6 +6,7 @@ import PedidosPage from './pages/PedidosPage';
 import ItemsAnalysisPage from './pages/ItemsAnalysisPage';
 import CreatePedidoPage from './pages/CreatePedidoPage';
 import FornecedoresPage from './pages/FornecedoresPage';
+import UsersPage from './pages/UsersPage';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -68,6 +69,16 @@ function App() {
           <ProtectedRoute>
             <Layout>
               <CreatePedidoPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/usuarios"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <UsersPage />
             </Layout>
           </ProtectedRoute>
         }

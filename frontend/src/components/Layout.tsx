@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, LayoutDashboard, ShoppingCart, Package, Building2 } from 'lucide-react';
+import { LogOut, LayoutDashboard, ShoppingCart, Package, Building2, Users } from 'lucide-react';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
@@ -46,6 +46,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <ShoppingCart size={20} />
                 <span>Pedidos</span>
               </Link>
+              {user?.perfil === 'ADMIN' && (
+                <Link
+                  to="/usuarios"
+                  className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
+                >
+                  <Users size={20} />
+                  <span>Usuários</span>
+                </Link>
+              )}
             </div>
 
             <div className="flex items-center space-x-4">
