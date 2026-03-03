@@ -62,6 +62,14 @@ const PedidoPrintView = forwardRef<HTMLDivElement, PedidoPrintViewProps>(
             <div className="bg-gray-50 p-4 rounded">
               <p className="text-gray-800">{pedido.comprador_nome}</p>
             </div>
+
+            <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2 mt-4">
+              Local de Entrega
+            </h3>
+            <div className="bg-blue-50 p-4 rounded border-l-4 border-blue-600">
+              <p className="font-semibold text-blue-900">{pedido.local_entrega.tipo}</p>
+              <p className="text-sm text-gray-700 mt-1">{pedido.local_entrega.endereco}</p>
+            </div>
           </div>
         </div>
 

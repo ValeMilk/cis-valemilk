@@ -55,6 +55,12 @@ export interface HistoricoStatus {
   observacao?: string;
 }
 
+export interface LocalEntrega {
+  tipo: 'Matriz' | 'Filial';
+  endereco: string;
+  linkMaps: string;
+}
+
 export interface Pedido {
   _id: string;
   idCompra: string;
@@ -62,6 +68,7 @@ export interface Pedido {
   comprador_id: string;
   comprador_nome: string;
   fornecedor: string;
+  local_entrega: LocalEntrega;
   status_atual: StatusPedido;
   itens: PedidoItem[];
   valor_total: number;

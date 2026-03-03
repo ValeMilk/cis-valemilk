@@ -31,12 +31,19 @@ export interface IHistoricoStatus {
   observacao?: string;
 }
 
+export interface ILocalEntrega {
+  tipo: 'Matriz' | 'Filial';
+  endereco: string;
+  linkMaps: string;
+}
+
 export interface IPedido extends Document {
   idCompra: string;
   numero: string;
   comprador_id: Types.ObjectId;
   comprador_nome: string;
   fornecedor: string;
+  local_entrega: ILocalEntrega;
   status_atual: StatusPedido;
   itens: IPedidoItem[];
   valor_total: number;
@@ -52,6 +59,11 @@ const pedidoSchema = new Schema<IPedido>({
   comprador_id: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   comprador_nome: { type: String, required: true },
   fornecedor: { type: String, required: true },
+  local_entrega: {
+    tipo: { type: String, enum: ['Matriz', 'Filial'], required: true },
+    endereco: { type: String, required: true },
+    linkMaps: { type: String, required: true }
+  },
   status_atual: { 
     type: String, 
     enum: Object.values(StatusPedido), 

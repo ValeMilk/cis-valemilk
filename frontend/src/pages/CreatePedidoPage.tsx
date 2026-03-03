@@ -15,9 +15,21 @@ const CreatePedidoPage = () => {
   const { user } = useAuth();
   const [fornecedorId, setFornecedorId] = useState('');
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
+  const [localEntrega, setLocalEntrega] = useState<'Matriz' | 'Filial' | ''>('');
   const [observacao, setObservacao] = useState('');
   const [items, setItems] = useState<PedidoItem[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const locaisEntrega = {
+    Matriz: {
+      endereco: 'AV. JUSCELINO KUBITSCHEK, S/N - OMBREIRA, PENTECOSTE - CEARÁ',
+      linkMaps: 'https://share.google/fmCACVXDiH1pxZFoz'
+    },
+    Filial: {
+      endereco: 'R. Euríco Medina, 410 - Henrique Jorge, Fortaleza - CE, 60526-165',
+      linkMaps: 'https://share.google/CQeSVcYZh1JGMkbSJ'
+    }
+  };
 
   useEffect(() => {
     // Carregar fornecedores ativos
@@ -92,6 +104,11 @@ const CreatePedidoPage = () => {
       return;
     }
 
+    if (!localEntrega) {
+      alert('Por favor, selecione o local de entrega');
+      return;
+    }
+
     if (items.length === 0) {
       alert('Adicione pelo menos um item ao pedido');
       return;
@@ -103,8 +120,15 @@ const CreatePedidoPage = () => {
       const fornecedorSelecionado = fornecedores.find(f => f._id === fornecedorId);
       const fornecedorNome = fornecedorSelecionado?.nomeFantasia || fornecedorSelecionado?.razaoSocial || '';
 
+      const localEntregaData = locaisEntrega[localEntrega as 'Matriz' | 'Filial'];
+
       const pedidoData = {
         fornecedor: fornecedorNome,
+        local_entrega: {
+          tipo: localEntrega,
+          endereco: localEntregaData.endereco,
+          linkMaps: localEntregaData.linkMaps
+        },
         observacoes: observacao.trim(),
         valor_total: 0,
         itens: items.map((pi) => ({
@@ -224,6 +248,26 @@ const CreatePedidoPage = () => {
             {fornecedores.length === 0 && (
               <p className="text-sm text-amber-600 mt-1">
                 Nenhum fornecedor cadastrado. <button onClick={() => navigate('/fornecedores')} className="underline hover:text-amber-700">Cadastrar agora</button>
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Local de Entrega <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={localEntrega}
+              onChange={(e) => setLocalEntrega(e.target.value as 'Matriz' | 'Filial' | '')}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Selecione o local de entrega</option>
+              <option value="Matriz">Matriz - Pentecoste/CE</option>
+              <option value="Filial">Filial - Fortaleza/CE</option>
+            </select>
+            {localEntrega && (
+              <p className="text-xs text-gray-500 mt-1">
+                {locaisEntrega[localEntrega as 'Matriz' | 'Filial'].endereco}
               </p>
             )}
           </div>
