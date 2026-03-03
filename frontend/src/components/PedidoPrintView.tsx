@@ -133,7 +133,7 @@ const PedidoPrintView = forwardRef<HTMLDivElement, PedidoPrintViewProps>(
         {/* Informações de Rodapé */}
         <div className="mt-6 text-center text-xs text-gray-500">
           <p>Este documento é uma solicitação de compra e não representa uma obrigação de compra definitiva.</p>
-          <p className="mt-1">Para mais informações, entre em contato: contato@valemilk.com.br</p>
+          <p className="mt-1">Para mais informações, entre em contato: compras@valemilk.com.br</p>
         </div>
       </div>
     );
