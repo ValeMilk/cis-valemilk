@@ -73,9 +73,47 @@ const ItemsAnalysisPage = () => {
     if (prevFimFilter) {
       filtered = filtered.filter((item) => {
         const prevFim = item.previsao_fim_estoque || '';
+        
         if (prevFimFilter === 'Sem Estoque') return prevFim === 'Sem Estoque';
         if (prevFimFilter === 'Sem Consumo') return prevFim === 'Sem Consumo';
-        if (prevFimFilter === 'Com Data') return prevFim !== 'Sem Estoque' && prevFim !== 'Sem Consumo' && prevFim !== '-';
+        
+        // Filtros por período de dias
+        if (prevFimFilter === '30dias' || prevFimFilter === '60dias' || prevFimFilter === '90dias') {
+          // Verifica se tem uma data válida (não é "Sem Estoque", "Sem Consumo" ou "-")
+          if (prevFim === 'Sem Estoque' || prevFim === 'Sem Consumo' || prevFim === '-' || !prevFim) {
+            return false;
+          }
+          
+          // Converte a data de dd/MM/yyyy para Date
+          const [dia, mes, ano] = prevFim.split('/').map(Number);
+          const dataPrevFim = new Date(ano, mes - 1, dia);
+          const hoje = new Date();
+          hoje.setHours(0, 0, 0, 0);
+          
+          // Calcula diferença em dias
+          const diffTime = dataPrevFim.getTime() - hoje.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          
+          if (prevFimFilter === '30dias') return diffDays <= 30 && diffDays >= 0;
+          if (prevFimFilter === '60dias') return diffDays <= 60 && diffDays >= 0;
+          if (prevFimFilter === '90dias') return diffDays <= 90 && diffDays >= 0;
+        }
+        
+        if (prevFimFilter === 'Com Data') {
+          return prevFim !== 'Sem Estoque' && prevFim !== 'Sem Consumo' && prevFim !== '-' && prevFim;
+        }
+        
+        if (prevFimFilter === 'Vencido') {
+          if (prevFim === 'Sem Estoque' || prevFim === 'Sem Consumo' || prevFim === '-' || !prevFim) {
+            return false;
+          }
+          const [dia, mes, ano] = prevFim.split('/').map(Number);
+          const dataPrevFim = new Date(ano, mes - 1, dia);
+          const hoje = new Date();
+          hoje.setHours(0, 0, 0, 0);
+          return dataPrevFim < hoje;
+        }
+        
         return true;
       });
       console.log('✅ Após filtro prev.fim:', filtered.length);
@@ -286,9 +324,13 @@ const ItemsAnalysisPage = () => {
                 className="pl-10 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
               >
                 <option value="">Todos</option>
+                <option value="Vencido">Já Vencido</option>
+                <option value="30dias">Vence em até 30 dias</option>
+                <option value="60dias">Vence em até 60 dias</option>
+                <option value="90dias">Vence em até 90 dias</option>
+                <option value="Com Data">Com Data Prevista</option>
                 <option value="Sem Estoque">Sem Estoque</option>
                 <option value="Sem Consumo">Sem Consumo</option>
-                <option value="Com Data">Com Data Prevista</option>
               </select>
             </div>
           </div>
