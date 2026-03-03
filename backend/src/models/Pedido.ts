@@ -5,9 +5,20 @@ export interface IPedidoItem {
   item_id: string;
   codigo_item: string;
   descricao: string;
+  tipo: string;
+  fornecedor: string;
+  classe_abc: string;
+  unidade_medida: string;
   quantidade_solicitada: number;
   quantidade_recebida: number;
-  unidade_medida: string;
+  saldo_dep_aberto: number;
+  saldo_dep_fechado_interno: number;
+  saldo_dep_fechado_externo: number;
+  estoque_atual: number;
+  giro_mensal: number;
+  media_giro_trimestre: number;
+  data_ultima_entrada: string;
+  previsao_fim_estoque: string;
   preco_unitario: number;
   valor_total: number;
 }
@@ -50,9 +61,20 @@ const pedidoSchema = new Schema<IPedido>({
     item_id: String,
     codigo_item: String,
     descricao: String,
+    tipo: String,
+    fornecedor: String,
+    classe_abc: String,
+    unidade_medida: String,
     quantidade_solicitada: Number,
     quantidade_recebida: { type: Number, default: 0 },
-    unidade_medida: String,
+    saldo_dep_aberto: Number,
+    saldo_dep_fechado_interno: Number,
+    saldo_dep_fechado_externo: Number,
+    estoque_atual: Number,
+    giro_mensal: Number,
+    media_giro_trimestre: Number,
+    data_ultima_entrada: String,
+    previsao_fim_estoque: String,
     preco_unitario: Number,
     valor_total: Number
   }],

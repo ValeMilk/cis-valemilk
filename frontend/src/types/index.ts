@@ -29,9 +29,20 @@ export interface PedidoItem {
   item_id: string;
   codigo_item: string;
   descricao: string;
+  tipo: string;
+  fornecedor: string;
+  classe_abc: string;
+  unidade_medida: string;
   quantidade_solicitada: number;
   quantidade_recebida: number;
-  unidade_medida: string;
+  saldo_dep_aberto: number;
+  saldo_dep_fechado_interno: number;
+  saldo_dep_fechado_externo: number;
+  estoque_atual: number;
+  giro_mensal: number;
+  media_giro_trimestre: number;
+  data_ultima_entrada: string;
+  previsao_fim_estoque: string;
   preco_unitario: number;
   valor_total: number;
 }
