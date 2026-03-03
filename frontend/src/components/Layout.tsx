@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LogOut, LayoutDashboard, ShoppingCart, Package, Building2, Users } from 'lucide-react';
+import { PerfilEnum } from '../types';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
@@ -46,7 +47,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <ShoppingCart size={20} />
                 <span>Pedidos</span>
               </Link>
-              {user?.perfil === 'ADMIN' && (
+              {user?.perfil === PerfilEnum.ADMIN && (
                 <Link
                   to="/usuarios"
                   className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
