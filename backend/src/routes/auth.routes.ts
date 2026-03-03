@@ -15,6 +15,20 @@ const adminMiddleware = async (req: AuthRequest, res: any, next: any) => {
   next();
 };
 
+// Get active users for login (public endpoint)
+router.get('/active-users', async (req, res) => {
+  try {
+    const users = await User.find({ ativo: true })
+      .select('nome email')
+      .sort({ nome: 1 });
+    
+    res.json(users);
+  } catch (error) {
+    console.error('Error fetching active users:', error);
+    res.status(500).json({ message: 'Erro ao buscar usuários' });
+  }
+});
+
 // Login
 router.post('/login', async (req, res) => {
   try {
