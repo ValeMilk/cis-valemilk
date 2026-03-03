@@ -11,6 +11,13 @@ interface User {
   ativo: boolean;
 }
 
+interface FormData {
+  nome: string;
+  email: string;
+  perfil: string;
+  ativo: boolean;
+}
+
 const perfis = [
   { value: PerfilEnum.COMPRADOR, label: 'Comprador' },
   { value: PerfilEnum.DIRETORIA, label: 'Diretoria' },
@@ -23,7 +30,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     nome: '',
     email: '',
     perfil: PerfilEnum.COMPRADOR,
@@ -61,7 +68,7 @@ export default function UsersPage() {
       setFormData({
         nome: '',
         email: '',
-        perfil: 'COMPRADOR',
+        perfil: PerfilEnum.COMPRADOR,
         ativo: true
       });
     }
@@ -74,7 +81,7 @@ export default function UsersPage() {
     setFormData({
       nome: '',
       email: '',
-      perfil: 'COMPRADOR',
+      perfil: PerfilEnum.COMPRADOR,
       ativo: true
     });
   };
