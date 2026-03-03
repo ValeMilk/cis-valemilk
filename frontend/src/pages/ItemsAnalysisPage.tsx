@@ -460,9 +460,6 @@ const ItemsAnalysisPage = () => {
                 <th className="px-1 py-1 text-left font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
                   Descrição
                 </th>
-                <th className="px-0.5 py-1 text-left font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Fornecedor
-                </th>
                 <th className="px-0.5 py-1 text-center font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
                   Cl
                 </th>
@@ -504,7 +501,7 @@ const ItemsAnalysisPage = () => {
             >
               {filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={16} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={15} className="px-6 py-12 text-center text-gray-500">
                     <Package className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                     <p>Nenhum item encontrado</p>
                   </td>
@@ -540,9 +537,6 @@ const ItemsAnalysisPage = () => {
                     </td>
                     <td className="px-0.5 py-0.5 text-gray-900" title={item.descricao}>
                       <div className="truncate max-w-xs">{item.descricao}</div>
-                    </td>
-                    <td className="px-0.5 py-0.5 text-gray-600" style={{ fontSize: '0.6rem' }} title={item.fornecedor}>
-                      <div className="truncate max-w-[120px]">{item.fornecedor}</div>
                     </td>
                     <td className="px-0.5 py-0.5 text-center">
                       <span
@@ -603,7 +597,7 @@ const ItemsAnalysisPage = () => {
           </table>
         </div>
         <div className="px-4 py-2 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 text-center">
-          💡 Dica: Role horizontalmente para ver todas as colunas (Tipo, Fornecedor, Depósitos, Giros, Valor, Data, etc.)
+          💡 Dica: Role horizontalmente para ver todas as colunas (Tipo, Depósitos, Giros, Valor, Data, etc.)
         </div>
       </div>
 
