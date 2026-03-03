@@ -29,7 +29,7 @@ const users = [
   {
     nome: 'Admin Sistema',
     email: 'admin@valemilk.com',
-    password: 'admin123',
+    password: 'valimilksuporte2025',
     perfil: PerfilEnum.ADMIN
   }
 ];

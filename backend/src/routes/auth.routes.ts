@@ -18,17 +18,28 @@ const adminMiddleware = async (req: AuthRequest, res: any, next: any) => {
 // Login
 router.post('/login', async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, password } = req.body;
+
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email e senha são obrigatórios' });
+    }
 
     // Find user
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ message: 'Email não encontrado' });
+      return res.status(401).json({ message: 'Email ou senha inválidos' });
     }
 
     // Check if active
     if (!user.ativo) {
       return res.status(403).json({ message: 'Usuário inativo' });
+    }
+
+    // Verify password
+    const validPassword = await bcrypt.compare(password, user.hashed_password);
+    if (!validPassword) {
+      return res.status(401).json({ message: 'Email ou senha inválidos' });
     }
 
     // Generate token
