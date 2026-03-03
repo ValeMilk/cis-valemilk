@@ -98,7 +98,7 @@ router.get('/users', authMiddleware, adminMiddleware, async (req: AuthRequest, r
 // Create user (admin only)
 router.post('/users', authMiddleware, adminMiddleware, async (req: AuthRequest, res) => {
   try {
-    const { nome, email, perfil } = req.body;
+    const { nome, email, perfil, password } = req.body;
 
     // Check if email already exists
     const existingUser = await User.findOne({ email });
@@ -106,12 +106,17 @@ router.post('/users', authMiddleware, adminMiddleware, async (req: AuthRequest, 
       return res.status(400).json({ message: 'Email já cadastrado' });
     }
 
-    // Create user without password (login by email only)
+    // Validate password
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: 'Senha deve ter no mínimo 6 caracteres' });
+    }
+
+    // Create user with hashed password
     const user = new User({
       nome,
       email,
       perfil,
-      hashed_password: await bcrypt.hash('temp', 10), // Temporary password (not used)
+      hashed_password: await bcrypt.hash(password, 10),
       ativo: true
     });
 
@@ -133,7 +138,7 @@ router.post('/users', authMiddleware, adminMiddleware, async (req: AuthRequest, 
 // Update user (admin only)
 router.put('/users/:id', authMiddleware, adminMiddleware, async (req: AuthRequest, res) => {
   try {
-    const { nome, email, perfil, ativo } = req.body;
+    const { nome, email, perfil, ativo, password } = req.body;
 
     const user = await User.findById(req.params.id);
     if (!user) {
@@ -146,6 +151,14 @@ router.put('/users/:id', authMiddleware, adminMiddleware, async (req: AuthReques
       if (existingUser) {
         return res.status(400).json({ message: 'Email já cadastrado' });
       }
+    }
+
+    // Update password if provided
+    if (password) {
+      if (password.length < 6) {
+        return res.status(400).json({ message: 'Senha deve ter no mínimo 6 caracteres' });
+      }
+      user.hashed_password = await bcrypt.hash(password, 10);
     }
 
     user.nome = nome;
