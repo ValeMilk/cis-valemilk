@@ -31,6 +31,14 @@ export interface IHistoricoStatus {
   observacao?: string;
 }
 
+export interface IHistoricoEdicao {
+  usuario_id: Types.ObjectId;
+  usuario_nome: string;
+  data: Date;
+  campos_alterados: string[];
+  observacao?: string;
+}
+
 export interface ILocalEntrega {
   tipo: 'Matriz' | 'Filial';
   endereco: string;
@@ -51,6 +59,7 @@ export interface IPedido extends Document {
   data_prevista_entrega?: Date;
   observacoes?: string;
   historico_status: IHistoricoStatus[];
+  historico_edicoes: IHistoricoEdicao[];
 }
 
 const pedidoSchema = new Schema<IPedido>({
@@ -99,6 +108,13 @@ const pedidoSchema = new Schema<IPedido>({
     usuario_id: { type: Schema.Types.ObjectId, ref: 'User' },
     usuario_nome: String,
     data: { type: Date, default: Date.now },
+    observacao: String
+  }],
+  historico_edicoes: [{
+    usuario_id: { type: Schema.Types.ObjectId, ref: 'User' },
+    usuario_nome: String,
+    data: { type: Date, default: Date.now },
+    campos_alterados: [String],
     observacao: String
   }]
 });

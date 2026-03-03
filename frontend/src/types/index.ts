@@ -55,6 +55,14 @@ export interface HistoricoStatus {
   observacao?: string;
 }
 
+export interface HistoricoEdicao {
+  usuario_id: string;
+  usuario_nome: string;
+  data: string;
+  campos_alterados: string[];
+  observacao?: string;
+}
+
 export interface LocalEntrega {
   tipo: 'Matriz' | 'Filial';
   endereco: string;
@@ -76,6 +84,7 @@ export interface Pedido {
   data_prevista_entrega?: string;
   observacoes?: string;
   historico_status: HistoricoStatus[];
+  historico_edicoes: HistoricoEdicao[];
 }
 
 export interface Item {

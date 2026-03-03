@@ -78,23 +78,66 @@ router.post('/', authMiddleware, requireRole(PerfilEnum.COMPRADOR, PerfilEnum.AD
   }
 });
 
-// Update pedido (only draft)
+// Update pedido (only draft/awaiting approval, only comprador/diretoria)
 router.put('/:id', authMiddleware, async (req: AuthRequest, res) => {
   try {
+    const user = await User.findById(req.user!.id);
+    if (!user) {
+      return res.status(404).json({ message: 'Usuário não encontrado' });
+    }
+
+    // Verificar permissões: apenas Comprador ou Diretoria
+    if (user.perfil !== PerfilEnum.COMPRADOR && user.perfil !== PerfilEnum.DIRETORIA && user.perfil !== PerfilEnum.ADMIN) {
+      return res.status(403).json({ message: 'Sem permissão para editar pedidos' });
+    }
+
     const pedido = await Pedido.findById(req.params.id);
     if (!pedido) {
       return res.status(404).json({ message: 'Pedido não encontrado' });
     }
 
-    if (pedido.status_atual !== StatusPedido.RASCUNHO) {
-      return res.status(400).json({ message: 'Somente rascunhos podem ser editados' });
+    // Verificar status: apenas RASCUNHO ou AGUARDANDO_APROVACAO
+    if (pedido.status_atual !== StatusPedido.RASCUNHO && pedido.status_atual !== StatusPedido.AGUARDANDO_APROVACAO) {
+      return res.status(400).json({ message: 'Pedido não pode ser editado neste status' });
     }
 
+    // Identificar campos alterados
+    const camposAlterados: string[] = [];
+    const camposParaVerificar = [
+      { key: 'fornecedor', label: 'Fornecedor' },
+      { key: 'local_entrega', label: 'Local de Entrega' },
+      { key: 'observacoes', label: 'Observações' },
+      { key: 'itens', label: 'Itens do Pedido' }
+    ];
+
+    camposParaVerificar.forEach(campo => {
+      if (JSON.stringify((pedido as any)[campo.key]) !== JSON.stringify(req.body[campo.key])) {
+        camposAlterados.push(campo.label);
+      }
+    });
+
+    // Atualizar pedido
     Object.assign(pedido, req.body);
+
+    // Adicionar ao histórico de edições
+    if (camposAlterados.length > 0) {
+      if (!pedido.historico_edicoes) {
+        pedido.historico_edicoes = [];
+      }
+      pedido.historico_edicoes.push({
+        usuario_id: user._id,
+        usuario_nome: user.nome,
+        data: new Date(),
+        campos_alterados: camposAlterados,
+        observacao: req.body.observacao_edicao || undefined
+      });
+    }
+
     await pedido.save();
 
     res.json(pedido);
   } catch (error) {
+    console.error('Update pedido error:', error);
     res.status(500).json({ message: 'Erro ao atualizar pedido' });
   }
 });
