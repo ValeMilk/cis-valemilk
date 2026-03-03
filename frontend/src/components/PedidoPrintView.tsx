@@ -115,25 +115,9 @@ const PedidoPrintView = forwardRef<HTMLDivElement, PedidoPrintViewProps>(
             </tbody>
           </table>
         </div>
-
-        {/* Rodapé */}
-        <div className="mt-8 pt-6 border-t border-gray-300">
-          <div className="grid grid-cols-2 gap-8">
-            <div>
-              <p className="text-sm text-gray-600 mb-2">Assinatura do Fornecedor:</p>
-              <div className="border-t border-gray-400 mt-8"></div>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-2">Assinatura do Comprador:</p>
-              <div className="border-t border-gray-400 mt-8"></div>
-            </div>
-          </div>
-        </div>
-
         {/* Informações de Rodapé */}
         <div className="mt-6 text-center text-xs text-gray-500">
-          <p>Este documento é uma solicitação de compra e não representa uma obrigação de compra definitiva.</p>
-          <p className="mt-1">Para mais informações, entre em contato: compras@valemilk.com.br</p>
+                    <p className="mt-1">Para mais informações, entre em contato: compras@valemilk.com.br</p>
         </div>
       </div>
     );
