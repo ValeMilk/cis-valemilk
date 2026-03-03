@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Users, Plus, Edit2, Trash2, UserCheck, UserX } from 'lucide-react';
 import api from '../services/api';
+import { PerfilEnum } from '../types';
 
 interface User {
   _id: string;
@@ -11,10 +12,10 @@ interface User {
 }
 
 const perfis = [
-  { value: 'COMPRADOR', label: 'Comprador' },
-  { value: 'DIRETORIA', label: 'Diretoria' },
-  { value: 'RECEBIMENTO', label: 'Recebimento' },
-  { value: 'ADMIN', label: 'Administrador' }
+  { value: PerfilEnum.COMPRADOR, label: 'Comprador' },
+  { value: PerfilEnum.DIRETORIA, label: 'Diretoria' },
+  { value: PerfilEnum.RECEBIMENTO, label: 'Recebimento' },
+  { value: PerfilEnum.ADMIN, label: 'Administrador' }
 ];
 
 export default function UsersPage() {
@@ -25,7 +26,7 @@ export default function UsersPage() {
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
-    perfil: 'COMPRADOR',
+    perfil: PerfilEnum.COMPRADOR,
     ativo: true
   });
 
@@ -114,13 +115,13 @@ export default function UsersPage() {
 
   const getPerfilBadgeColor = (perfil: string) => {
     switch (perfil) {
-      case 'ADMIN':
+      case PerfilEnum.ADMIN:
         return 'bg-purple-100 text-purple-800';
-      case 'DIRETORIA':
+      case PerfilEnum.DIRETORIA:
         return 'bg-blue-100 text-blue-800';
-      case 'COMPRADOR':
+      case PerfilEnum.COMPRADOR:
         return 'bg-green-100 text-green-800';
-      case 'RECEBIMENTO':
+      case PerfilEnum.RECEBIMENTO:
         return 'bg-orange-100 text-orange-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -183,7 +184,7 @@ export default function UsersPage() {
         <div className="bg-white p-4 rounded-lg shadow">
           <p className="text-sm text-gray-600">Administradores</p>
           <p className="text-2xl font-bold text-purple-600">
-            {users.filter(u => u.perfil === 'ADMIN').length}
+            {users.filter(u => u.perfil === PerfilEnum.ADMIN).length}
           </p>
         </div>
       </div>
