@@ -105,7 +105,7 @@ const CreatePedidoPage = () => {
 
       const pedidoData = {
         fornecedor: fornecedorNome,
-        observacao: observacao.trim(),
+        observacoes: observacao.trim(),
         valor_total: 0,
         itens: items.map((pi) => ({
           item_id: pi.item.id,

@@ -36,11 +36,11 @@ const PedidoPrintView = forwardRef<HTMLDivElement, PedidoPrintViewProps>(
               Informações da Empresa
             </h3>
             <div className="bg-gray-50 p-4 rounded">
-              <p className="font-semibold text-gray-800">Vale Milk Indústria e Comércio</p>
-              <p className="text-sm text-gray-600 mt-1">CNPJ: 00.000.000/0000-00</p>
-              <p className="text-sm text-gray-600">Endereço: Rua Exemplo, 123</p>
-              <p className="text-sm text-gray-600">Cidade/UF - CEP 00000-000</p>
-              <p className="text-sm text-gray-600">Tel: (00) 0000-0000</p>
+              <p className="font-semibold text-gray-800">KM CACAU INDÚSTRIA E COMERCIO DE LATICINIOS LTDA</p>
+              <p className="text-sm text-gray-600 mt-1">CNPJ: 02.518.353/0001-03</p>
+              <p className="text-sm text-gray-600">CGF: 06.266540-5</p>
+              <p className="text-sm text-gray-600">AV. JUSCELINO KUBITSCHEK, S/N - OMBREIRA</p>
+              <p className="text-sm text-gray-600">PENTECOSTE - CEARÁ</p>
             </div>
           </div>
 
