@@ -14,6 +14,7 @@ const ItemsAnalysisPage = () => {
   const [fornecedorFilter, setFornecedorFilter] = useState<string>('');
   const [classeFilter, setClasseFilter] = useState<string>('');
   const [prevFimFilter, setPrevFimFilter] = useState<string>('');
+  const [prevFimDate, setPrevFimDate] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
 
@@ -24,7 +25,7 @@ const ItemsAnalysisPage = () => {
   useEffect(() => {
     console.log('🔄 useEffect disparado - mudança em filtros detectada');
     filterItems();
-  }, [items, searchTerm, tipoFilter, fornecedorFilter, classeFilter, prevFimFilter]);
+  }, [items, searchTerm, tipoFilter, fornecedorFilter, classeFilter, prevFimFilter, prevFimDate]);
 
   const fetchItems = async () => {
     try {
@@ -117,6 +118,31 @@ const ItemsAnalysisPage = () => {
         return true;
       });
       console.log('✅ Após filtro prev.fim:', filtered.length);
+    }
+
+    // Filtro por data específica
+    if (prevFimDate) {
+      filtered = filtered.filter((item) => {
+        const prevFim = item.previsao_fim_estoque || '';
+        
+        // Ignora itens sem data válida
+        if (prevFim === 'Sem Estoque' || prevFim === 'Sem Consumo' || prevFim === '-' || !prevFim) {
+          return false;
+        }
+        
+        // Converte a data de dd/MM/yyyy para Date
+        const [dia, mes, ano] = prevFim.split('/').map(Number);
+        const dataPrevFim = new Date(ano, mes - 1, dia);
+        dataPrevFim.setHours(0, 0, 0, 0);
+        
+        // Data selecionada pelo usuário (formato yyyy-MM-dd do input type="date")
+        const dataSelecionada = new Date(prevFimDate);
+        dataSelecionada.setHours(0, 0, 0, 0);
+        
+        // Retorna itens com data de fim <= data selecionada
+        return dataPrevFim <= dataSelecionada;
+      });
+      console.log('✅ Após filtro data específica:', filtered.length);
     }
 
     console.log('🎯 Total filtrado final:', filtered.length);
@@ -334,10 +360,28 @@ const ItemsAnalysisPage = () => {
               </select>
             </div>
           </div>
+
+          {/* Data Específica Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Vence até a data
+            </label>
+            <input
+              type="date"
+              value={prevFimDate}
+              onChange={(e) => setPrevFimDate(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            {prevFimDate && (
+              <p className="text-xs text-gray-500 mt-1">
+                Mostrando itens que acabam até {new Date(prevFimDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Clear Filters Button */}
-        {(searchTerm || tipoFilter || fornecedorFilter || classeFilter || prevFimFilter) && (
+        {(searchTerm || tipoFilter || fornecedorFilter || classeFilter || prevFimFilter || prevFimDate) && (
           <div className="mt-4 flex justify-end">
             <button
               onClick={() => {
@@ -346,6 +390,7 @@ const ItemsAnalysisPage = () => {
                 setFornecedorFilter('');
                 setClasseFilter('');
                 setPrevFimFilter('');
+                setPrevFimDate('');
               }}
               className="text-sm text-blue-600 hover:text-blue-700 font-medium"
             >
