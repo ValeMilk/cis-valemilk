@@ -70,14 +70,6 @@ export default function LoginPage() {
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
-
-        <div className="mt-6 text-sm text-gray-600">
-          <p className="font-semibold mb-2">Credenciais de teste:</p>
-          <p>Comprador: comprador@valemilk.com / comprador123</p>
-          <p>Diretoria: diretoria@valemilk.com / diretoria123</p>
-          <p>Recebimento: recebimento@valemilk.com / recebimento123</p>
-          <p>Admin: admin@valemilk.com / valimilksuporte2025</p>
-        </div>
       </div>
     </div>
   );
