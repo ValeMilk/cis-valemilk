@@ -489,7 +489,10 @@ const PedidoDetailPage = () => {
                     let diasCobertura = '-';
                     let corDias = 'text-gray-600';
                     
-                    if (item.previsao_fim_estoque && item.previsao_fim_estoque !== 'Sem Estoque' && item.previsao_fim_estoque !== 'Sem Consumo' && item.previsao_fim_estoque !== '-') {
+                    if (item.previsao_fim_estoque === 'Sem Estoque') {
+                      diasCobertura = '0';
+                      corDias = 'text-red-600 font-bold';
+                    } else if (item.previsao_fim_estoque && item.previsao_fim_estoque !== 'Sem Consumo' && item.previsao_fim_estoque !== '-') {
                       try {
                         const [dia, mes, ano] = item.previsao_fim_estoque.split('/').map(Number);
                         const dataPrevFim = new Date(ano, mes - 1, dia);

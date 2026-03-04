@@ -256,8 +256,13 @@ const ItemsAnalysisPage = () => {
   };
 
   const calcularDiasCoberturaNumerico = (previsaoFim: string): number => {
-    if (!previsaoFim || previsaoFim === 'Sem Estoque' || previsaoFim === 'Sem Consumo' || previsaoFim === '-') {
+    if (!previsaoFim || previsaoFim === 'Sem Consumo' || previsaoFim === '-') {
       return -Infinity; // Coloca no final
+    }
+    
+    // Se está sem estoque, retorna 0
+    if (previsaoFim === 'Sem Estoque') {
+      return 0;
     }
     try {
       const [dia, mes, ano] = previsaoFim.split('/').map(Number);
@@ -342,8 +347,13 @@ const ItemsAnalysisPage = () => {
 
   const calcularDiasCobertura = (previsaoFim: string): string => {
     // Se não tem previsão válida, retorna traço
-    if (!previsaoFim || previsaoFim === 'Sem Estoque' || previsaoFim === 'Sem Consumo' || previsaoFim === '-') {
+    if (!previsaoFim || previsaoFim === 'Sem Consumo' || previsaoFim === '-') {
       return '-';
+    }
+    
+    // Se está sem estoque, retorna 0
+    if (previsaoFim === 'Sem Estoque') {
+      return '0';
     }
 
     try {
