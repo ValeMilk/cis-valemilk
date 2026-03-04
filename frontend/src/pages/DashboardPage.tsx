@@ -54,8 +54,8 @@ export default function DashboardPage() {
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-500 text-sm">Aguardando Aprovação</p>
-              <p className="text-2xl font-bold">{data?.pedidos_aguardando_aprovacao || 0}</p>
+              <p className="text-gray-500 text-sm">Em Progresso</p>
+              <p className="text-2xl font-bold">{data?.pedidos_em_progresso || 0}</p>
             </div>
             <Clock className="text-yellow-500" size={32} />
           </div>

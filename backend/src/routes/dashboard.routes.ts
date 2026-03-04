@@ -24,11 +24,10 @@ router.get('/', authMiddleware, async (req, res) => {
     // Pedidos em aberto (não concluídos/cancelados)
     const statusAberto = [
       StatusPedido.RASCUNHO,
-      StatusPedido.AGUARDANDO_APROVACAO,
-      StatusPedido.APROVADO,
-      StatusPedido.ENVIADO,
-      StatusPedido.CONFIRMADO,
-      StatusPedido.RECEBIDO_PARCIAL
+      StatusPedido.ENVIADO_FORNECEDOR,
+      StatusPedido.AGUARDANDO_FATURAMENTO,
+      StatusPedido.EM_ROTA,
+      StatusPedido.RECEBIMENTO_NOTA
     ];
 
     const pedidosEmAberto = await Pedido.countDocuments({
@@ -40,9 +39,14 @@ router.get('/', authMiddleware, async (req, res) => {
       { $group: { _id: null, total: { $sum: '$valor_total' } } }
     ]);
 
-    // Pedidos aguardando aprovação
-    const pedidosAguardandoAprovacao = await Pedido.countDocuments({
-      status_atual: StatusPedido.AGUARDANDO_APROVACAO
+    // Pedidos em progresso (já enviados mas não aprovados)
+    const pedidosEmProgresso = await Pedido.countDocuments({
+      status_atual: { $in: [
+        StatusPedido.ENVIADO_FORNECEDOR,
+        StatusPedido.AGUARDANDO_FATURAMENTO,
+        StatusPedido.EM_ROTA,
+        StatusPedido.RECEBIMENTO_NOTA
+      ]}
     });
 
     // Top fornecedores
@@ -67,7 +71,7 @@ router.get('/', authMiddleware, async (req, res) => {
     res.json({
       total_pedidos: totalPedidos,
       pedidos_em_aberto: pedidosEmAberto,
-      pedidos_aguardando_aprovacao: pedidosAguardandoAprovacao,
+      pedidos_em_progresso: pedidosEmProgresso,
       valor_total_aberto: valorTotalAberto[0]?.total || 0,
       pedidos_por_status: pedidosPorStatus,
       top_fornecedores: topFornecedores,

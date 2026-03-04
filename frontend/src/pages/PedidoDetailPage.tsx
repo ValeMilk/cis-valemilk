@@ -6,6 +6,7 @@ import api from '../services/api';
 import { Pedido, Fornecedor, StatusPedido, PerfilEnum } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import PedidoPrintView from '../components/PedidoPrintView';
+import StatusStepper from '../components/StatusStepper';
 
 const PedidoDetailPage = () => {
   const { id } = useParams();
@@ -111,9 +112,8 @@ const PedidoDetailPage = () => {
                          user.perfil === PerfilEnum.DIRETORIA || 
                          user.perfil === PerfilEnum.ADMIN;
     
-    // Apenas status RASCUNHO ou AGUARDANDO_APROVACAO
-    const canEditByStatus = pedido.status_atual === StatusPedido.RASCUNHO || 
-                           pedido.status_atual === StatusPedido.AGUARDANDO_APROVACAO;
+    // Apenas status RASCUNHO pode ser editado
+    const canEditByStatus = pedido.status_atual === StatusPedido.RASCUNHO;
     
     return canEditByRole && canEditByStatus;
   };
@@ -172,6 +172,90 @@ const PedidoDetailPage = () => {
 
   const removeItem = (index: number) => {
     setItensEditaveis(itensEditaveis.filter((_, i) => i !== index));
+  };
+
+  const handleAvancarStatus = async () => {
+    if (!pedido) return;
+
+    // Mapeamento de status atual para próxima ação
+    const statusActions: Record<StatusPedido, { endpoint: string; message: string }> = {
+      [StatusPedido.RASCUNHO]: { 
+        endpoint: 'enviar-fornecedor', 
+        message: 'Pedido enviado ao fornecedor!' 
+      },
+      [StatusPedido.ENVIADO_FORNECEDOR]: { 
+        endpoint: 'aguardando-faturamento', 
+        message: 'Status atualizado para Aguardando Faturamento!' 
+      },
+      [StatusPedido.AGUARDANDO_FATURAMENTO]: { 
+        endpoint: 'em-rota', 
+        message: 'Status atualizado para Em Rota!' 
+      },
+      [StatusPedido.EM_ROTA]: { 
+        endpoint: 'recebimento-nota', 
+        message: 'Recebimento de nota registrado!' 
+      },
+      [StatusPedido.RECEBIMENTO_NOTA]: { 
+        endpoint: 'aprovar-diretoria', 
+        message: 'Pedido aprovado pela diretoria!' 
+      },
+      [StatusPedido.APROVADO_DIRETORIA]: { endpoint: '', message: '' },
+      [StatusPedido.CANCELADO]: { endpoint: '', message: '' }
+    };
+
+    const action = statusActions[pedido.status_atual];
+    if (!action.endpoint) return;
+
+    try {
+      await api.post(`/pedidos/${id}/${action.endpoint}`);
+      alert(action.message);
+      fetchPedido();
+    } catch (error: any) {
+      console.error('Erro ao atualizar status:', error);
+      alert(error.response?.data?.message || 'Erro ao atualizar status');
+    }
+  };
+
+  const canAdvanceStatus = () => {
+    if (!pedido || !user) return false;
+    
+    // Não pode avançar se já está aprovado ou cancelado
+    if (pedido.status_atual === StatusPedido.APROVADO_DIRETORIA || 
+        pedido.status_atual === StatusPedido.CANCELADO) {
+      return false;
+    }
+
+    // Verificar permissões por status
+    if (pedido.status_atual === StatusPedido.RASCUNHO) {
+      return user.perfil === PerfilEnum.COMPRADOR || user.perfil === PerfilEnum.ADMIN;
+    }
+    
+    if (pedido.status_atual === StatusPedido.RECEBIMENTO_NOTA) {
+      return user.perfil === PerfilEnum.DIRETORIA || user.perfil === PerfilEnum.ADMIN;
+    }
+
+    if (pedido.status_atual === StatusPedido.EM_ROTA) {
+      return user.perfil === PerfilEnum.RECEBIMENTO || user.perfil === PerfilEnum.ADMIN;
+    }
+
+    // Outros status podem ser avançados por qualquer um
+    return true;
+  };
+
+  const getNextStatusLabel = () => {
+    if (!pedido) return '';
+    
+    const labels: Record<StatusPedido, string> = {
+      [StatusPedido.RASCUNHO]: 'Enviar ao Fornecedor',
+      [StatusPedido.ENVIADO_FORNECEDOR]: 'Aguardando Faturamento',
+      [StatusPedido.AGUARDANDO_FATURAMENTO]: 'Marcar Em Rota',
+      [StatusPedido.EM_ROTA]: 'Registrar Recebimento',
+      [StatusPedido.RECEBIMENTO_NOTA]: 'Aprovar pela Diretoria',
+      [StatusPedido.APROVADO_DIRETORIA]: '',
+      [StatusPedido.CANCELADO]: ''
+    };
+    
+    return labels[pedido.status_atual] || '';
   };
 
   const formatDate = (dateString: string) => {
@@ -240,6 +324,14 @@ const PedidoDetailPage = () => {
                 >
                   <Edit2 className="w-5 h-5" />
                   Editar Pedido
+                </button>
+              )}
+              {canAdvanceStatus() && (
+                <button
+                  onClick={handleAvancarStatus}
+                  className="flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  {getNextStatusLabel()}
                 </button>
               )}
               <button
@@ -353,6 +445,17 @@ const PedidoDetailPage = () => {
         </>
       ) : (
         <>
+          {/* Status Stepper */}
+          {pedido.status_atual !== StatusPedido.RASCUNHO && 
+           pedido.status_atual !== StatusPedido.CANCELADO && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                Acompanhamento do Pedido
+              </h2>
+              <StatusStepper currentStatus={pedido.status_atual} />
+            </div>
+          )}
+
           {/* Visualização para Impressão */}
           <div className="bg-white rounded-lg shadow-lg overflow-hidden">
             <PedidoPrintView ref={printRef} pedido={pedido} />

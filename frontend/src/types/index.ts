@@ -7,13 +7,11 @@ export enum PerfilEnum {
 
 export enum StatusPedido {
   RASCUNHO = 'RASCUNHO',
-  AGUARDANDO_APROVACAO = 'AGUARDANDO_APROVACAO',
-  APROVADO = 'APROVADO',
-  REPROVADO = 'REPROVADO',
-  ENVIADO = 'ENVIADO',
-  CONFIRMADO = 'CONFIRMADO',
-  RECEBIDO_PARCIAL = 'RECEBIDO_PARCIAL',
-  RECEBIDO_COMPLETO = 'RECEBIDO_COMPLETO',
+  ENVIADO_FORNECEDOR = 'ENVIADO_FORNECEDOR',
+  AGUARDANDO_FATURAMENTO = 'AGUARDANDO_FATURAMENTO',
+  EM_ROTA = 'EM_ROTA',
+  RECEBIMENTO_NOTA = 'RECEBIMENTO_NOTA',
+  APROVADO_DIRETORIA = 'APROVADO_DIRETORIA',
   CANCELADO = 'CANCELADO'
 }
 
@@ -151,7 +149,7 @@ export interface ItemFornecedor {
 export interface DashboardData {
   total_pedidos: number;
   pedidos_em_aberto: number;
-  pedidos_aguardando_aprovacao: number;
+  pedidos_em_progresso: number;
   valor_total_aberto: number;
   pedidos_por_status: Array<{
     _id: StatusPedido;

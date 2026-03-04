@@ -96,8 +96,8 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res) => {
       return res.status(404).json({ message: 'Pedido não encontrado' });
     }
 
-    // Verificar status: apenas RASCUNHO ou AGUARDANDO_APROVACAO
-    if (pedido.status_atual !== StatusPedido.RASCUNHO && pedido.status_atual !== StatusPedido.AGUARDANDO_APROVACAO) {
+    // Verificar status: apenas RASCUNHO
+    if (pedido.status_atual !== StatusPedido.RASCUNHO) {
       return res.status(400).json({ message: 'Pedido não pode ser editado neste status' });
     }
 
@@ -142,8 +142,8 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res) => {
   }
 });
 
-// Enviar para aprovação
-router.post('/:id/enviar-aprovacao', authMiddleware, requireRole(PerfilEnum.COMPRADOR, PerfilEnum.ADMIN), async (req: AuthRequest, res) => {
+// Enviar ao fornecedor (primeiro passo do fluxo)
+router.post('/:id/enviar-fornecedor', authMiddleware, requireRole(PerfilEnum.COMPRADOR, PerfilEnum.ADMIN), async (req: AuthRequest, res) => {
   try {
     const pedido = await Pedido.findById(req.params.id);
     if (!pedido) {
@@ -155,100 +155,13 @@ router.post('/:id/enviar-aprovacao', authMiddleware, requireRole(PerfilEnum.COMP
     }
 
     const user = await User.findById(req.user!.id);
-    pedido.status_atual = StatusPedido.AGUARDANDO_APROVACAO;
+    pedido.status_atual = StatusPedido.ENVIADO_FORNECEDOR;
     pedido.historico_status.push({
-      status: StatusPedido.AGUARDANDO_APROVACAO,
+      status: StatusPedido.ENVIADO_FORNECEDOR,
       usuario_id: user!._id,
       usuario_nome: user!.nome,
       data: new Date(),
-      observacao: req.body.observacao
-    });
-
-    await pedido.save();
-    res.json(pedido);
-  } catch (error) {
-    res.status(500).json({ message: 'Erro ao enviar para aprovação' });
-  }
-});
-
-// Aprovar pedido
-router.post('/:id/aprovar', authMiddleware, requireRole(PerfilEnum.DIRETORIA, PerfilEnum.ADMIN), async (req: AuthRequest, res) => {
-  try {
-    const pedido = await Pedido.findById(req.params.id);
-    if (!pedido) {
-      return res.status(404).json({ message: 'Pedido não encontrado' });
-    }
-
-    if (pedido.status_atual !== StatusPedido.AGUARDANDO_APROVACAO) {
-      return res.status(400).json({ message: 'Status inválido para esta ação' });
-    }
-
-    const user = await User.findById(req.user!.id);
-    pedido.status_atual = StatusPedido.APROVADO;
-    pedido.historico_status.push({
-      status: StatusPedido.APROVADO,
-      usuario_id: user!._id,
-      usuario_nome: user!.nome,
-      data: new Date(),
-      observacao: req.body.observacao
-    });
-
-    await pedido.save();
-    res.json(pedido);
-  } catch (error) {
-    res.status(500).json({ message: 'Erro ao aprovar pedido' });
-  }
-});
-
-// Reprovar pedido
-router.post('/:id/reprovar', authMiddleware, requireRole(PerfilEnum.DIRETORIA, PerfilEnum.ADMIN), async (req: AuthRequest, res) => {
-  try {
-    const pedido = await Pedido.findById(req.params.id);
-    if (!pedido) {
-      return res.status(404).json({ message: 'Pedido não encontrado' });
-    }
-
-    if (pedido.status_atual !== StatusPedido.AGUARDANDO_APROVACAO) {
-      return res.status(400).json({ message: 'Status inválido para esta ação' });
-    }
-
-    const user = await User.findById(req.user!.id);
-    pedido.status_atual = StatusPedido.REPROVADO;
-    pedido.historico_status.push({
-      status: StatusPedido.REPROVADO,
-      usuario_id: user!._id,
-      usuario_nome: user!.nome,
-      data: new Date(),
-      observacao: req.body.observacao || 'Pedido reprovado'
-    });
-
-    await pedido.save();
-    res.json(pedido);
-  } catch (error) {
-    res.status(500).json({ message: 'Erro ao reprovar pedido' });
-  }
-});
-
-// Enviar ao fornecedor
-router.post('/:id/enviar-fornecedor', authMiddleware, requireRole(PerfilEnum.COMPRADOR, PerfilEnum.ADMIN), async (req: AuthRequest, res) => {
-  try {
-    const pedido = await Pedido.findById(req.params.id);
-    if (!pedido) {
-      return res.status(404).json({ message: 'Pedido não encontrado' });
-    }
-
-    if (pedido.status_atual !== StatusPedido.APROVADO) {
-      return res.status(400).json({ message: 'Apenas pedidos aprovados podem ser enviados' });
-    }
-
-    const user = await User.findById(req.user!.id);
-    pedido.status_atual = StatusPedido.ENVIADO;
-    pedido.historico_status.push({
-      status: StatusPedido.ENVIADO,
-      usuario_id: user!._id,
-      usuario_nome: user!.nome,
-      data: new Date(),
-      observacao: req.body.observacao
+      observacao: req.body.observacao || 'Pedido enviado ao fornecedor'
     });
 
     await pedido.save();
@@ -258,22 +171,22 @@ router.post('/:id/enviar-fornecedor', authMiddleware, requireRole(PerfilEnum.COM
   }
 });
 
-// Confirmar recebimento fornecedor
-router.post('/:id/confirmar', authMiddleware, async (req: AuthRequest, res) => {
+// Aguardando faturamento
+router.post('/:id/aguardando-faturamento', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const pedido = await Pedido.findById(req.params.id);
     if (!pedido) {
       return res.status(404).json({ message: 'Pedido não encontrado' });
     }
 
-    if (pedido.status_atual !== StatusPedido.ENVIADO) {
+    if (pedido.status_atual !== StatusPedido.ENVIADO_FORNECEDOR) {
       return res.status(400).json({ message: 'Status inválido para esta ação' });
     }
 
     const user = await User.findById(req.user!.id);
-    pedido.status_atual = StatusPedido.CONFIRMADO;
+    pedido.status_atual = StatusPedido.AGUARDANDO_FATURAMENTO;
     pedido.historico_status.push({
-      status: StatusPedido.CONFIRMADO,
+      status: StatusPedido.AGUARDANDO_FATURAMENTO,
       usuario_id: user!._id,
       usuario_nome: user!.nome,
       data: new Date(),
@@ -283,41 +196,26 @@ router.post('/:id/confirmar', authMiddleware, async (req: AuthRequest, res) => {
     await pedido.save();
     res.json(pedido);
   } catch (error) {
-    res.status(500).json({ message: 'Erro ao confirmar pedido' });
+    res.status(500).json({ message: 'Erro ao atualizar status' });
   }
 });
 
-// Receber itens
-router.post('/:id/receber', authMiddleware, requireRole(PerfilEnum.RECEBIMENTO, PerfilEnum.ADMIN), async (req: AuthRequest, res) => {
+// Em rota
+router.post('/:id/em-rota', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const pedido = await Pedido.findById(req.params.id);
     if (!pedido) {
       return res.status(404).json({ message: 'Pedido não encontrado' });
     }
 
-    if (![StatusPedido.CONFIRMADO, StatusPedido.RECEBIDO_PARCIAL].includes(pedido.status_atual)) {
-      return res.status(400).json({ message: 'Status inválido para recebimento' });
+    if (pedido.status_atual !== StatusPedido.AGUARDANDO_FATURAMENTO) {
+      return res.status(400).json({ message: 'Status inválido para esta ação' });
     }
 
-    const { itens_recebidos } = req.body;
-
-    // Update quantities
-    itens_recebidos.forEach((item: any) => {
-      const pedidoItem = pedido.itens.find(i => i.item_id === item.item_id);
-      if (pedidoItem) {
-        pedidoItem.quantidade_recebida += item.quantidade;
-      }
-    });
-
-    // Check if complete
-    const allReceived = pedido.itens.every(
-      item => item.quantidade_recebida >= item.quantidade_solicitada
-    );
-
     const user = await User.findById(req.user!.id);
-    pedido.status_atual = allReceived ? StatusPedido.RECEBIDO_COMPLETO : StatusPedido.RECEBIDO_PARCIAL;
+    pedido.status_atual = StatusPedido.EM_ROTA;
     pedido.historico_status.push({
-      status: pedido.status_atual,
+      status: StatusPedido.EM_ROTA,
       usuario_id: user!._id,
       usuario_nome: user!.nome,
       data: new Date(),
@@ -327,7 +225,65 @@ router.post('/:id/receber', authMiddleware, requireRole(PerfilEnum.RECEBIMENTO, 
     await pedido.save();
     res.json(pedido);
   } catch (error) {
-    res.status(500).json({ message: 'Erro ao receber itens' });
+    res.status(500).json({ message: 'Erro ao atualizar status' });
+  }
+});
+
+// Recebimento de nota
+router.post('/:id/recebimento-nota', authMiddleware, requireRole(PerfilEnum.RECEBIMENTO, PerfilEnum.ADMIN), async (req: AuthRequest, res) => {
+  try {
+    const pedido = await Pedido.findById(req.params.id);
+    if (!pedido) {
+      return res.status(404).json({ message: 'Pedido não encontrado' });
+    }
+
+    if (pedido.status_atual !== StatusPedido.EM_ROTA) {
+      return res.status(400).json({ message: 'Status inválido para esta ação' });
+    }
+
+    const user = await User.findById(req.user!.id);
+    pedido.status_atual = StatusPedido.RECEBIMENTO_NOTA;
+    pedido.historico_status.push({
+      status: StatusPedido.RECEBIMENTO_NOTA,
+      usuario_id: user!._id,
+      usuario_nome: user!.nome,
+      data: new Date(),
+      observacao: req.body.observacao
+    });
+
+    await pedido.save();
+    res.json(pedido);
+  } catch (error) {
+    res.status(500).json({ message: 'Erro ao registrar recebimento' });
+  }
+});
+
+// Aprovar pela diretoria (final)
+router.post('/:id/aprovar-diretoria', authMiddleware, requireRole(PerfilEnum.DIRETORIA, PerfilEnum.ADMIN), async (req: AuthRequest, res) => {
+  try {
+    const pedido = await Pedido.findById(req.params.id);
+    if (!pedido) {
+      return res.status(404).json({ message: 'Pedido não encontrado' });
+    }
+
+    if (pedido.status_atual !== StatusPedido.RECEBIMENTO_NOTA) {
+      return res.status(400).json({ message: 'Status inválido para esta ação' });
+    }
+
+    const user = await User.findById(req.user!.id);
+    pedido.status_atual = StatusPedido.APROVADO_DIRETORIA;
+    pedido.historico_status.push({
+      status: StatusPedido.APROVADO_DIRETORIA,
+      usuario_id: user!._id,
+      usuario_nome: user!.nome,
+      data: new Date(),
+      observacao: req.body.observacao || 'Pedido aprovado pela diretoria'
+    });
+
+    await pedido.save();
+    res.json(pedido);
+  } catch (error) {
+    res.status(500).json({ message: 'Erro ao aprovar pedido' });
   }
 });
 
@@ -339,7 +295,7 @@ router.post('/:id/cancelar', authMiddleware, async (req: AuthRequest, res) => {
       return res.status(404).json({ message: 'Pedido não encontrado' });
     }
 
-    if ([StatusPedido.RECEBIDO_COMPLETO, StatusPedido.CANCELADO].includes(pedido.status_atual)) {
+    if ([StatusPedido.APROVADO_DIRETORIA, StatusPedido.CANCELADO].includes(pedido.status_atual)) {
       return res.status(400).json({ message: 'Pedido não pode ser cancelado' });
     }
 
