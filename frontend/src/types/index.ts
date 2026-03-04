@@ -170,5 +170,6 @@ export interface DashboardData {
     status_atual: StatusPedido;
     valor_total: number;
     data_criacao: string;
+    data_prevista_entrega?: string;
   }>;
 }
