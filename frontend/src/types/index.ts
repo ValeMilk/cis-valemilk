@@ -111,6 +111,8 @@ export interface Item {
   media_giro_trimestre: number;
   data_ultima_entrada: string;
   previsao_fim_estoque: string;
+  status_pedido?: StatusPedido;
+  numero_pedido?: string;
 }
 
 export interface Fornecedor {

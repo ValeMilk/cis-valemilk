@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth';
 import { executeERPQuery, getItemsQuery, ERPItem } from '../services/erp.service';
+import { Pedido } from '../models/Pedido';
+import { StatusPedido } from '../types/enums';
 
 const router = Router();
 
@@ -24,6 +26,12 @@ interface Item {
   media_giro_trimestre: number;
   data_ultima_entrada: string;
   previsao_fim_estoque: string;
+}
+
+// Interface para item com status do pedido
+interface ItemWithStatus extends Item {
+  status_pedido?: StatusPedido;
+  numero_pedido?: string;
 }
 
 // Função auxiliar para parsear valores formatados (de pt-BR para número)
@@ -153,6 +161,84 @@ router.get('/', authMiddleware, async (req, res) => {
     res.json(filtered);
   } catch (error) {
     console.error('❌ Erro ao buscar itens:', error);
+    res.status(500).json({ message: 'Erro ao buscar itens' });
+  }
+});
+
+// Get all items with pedido status (status do pedido mais antigo em andamento)
+router.get('/with-status/all', authMiddleware, async (req, res) => {
+  try {
+    const { search, classe_abc } = req.query;
+    
+    let items: Item[];
+    
+    // Tentar buscar do ERP
+    try {
+      const erpItems = await executeERPQuery<ERPItem>(getItemsQuery());
+      items = erpItems.map(mapERPItemToItem);
+      console.log(`✅ ${items.length} itens carregados do ERP`);
+    } catch (erpError) {
+      console.warn('⚠️  ERP indisponível, usando dados mock:', erpError);
+      items = mockItems;
+    }
+    
+    // Aplicar filtros
+    let filtered = [...items];
+    
+    if (search) {
+      const searchLower = (search as string).toLowerCase();
+      filtered = filtered.filter(item => 
+        item.descricao.toLowerCase().includes(searchLower) ||
+        item.codigo_item.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    if (classe_abc) {
+      filtered = filtered.filter(item => item.classe_abc === classe_abc);
+    }
+    
+    // Enriquecer itens com status do pedido mais antigo em andamento
+    const statusEmAndamento = [
+      StatusPedido.ANALISE_COTACAO,
+      StatusPedido.ENVIADO_FORNECEDOR,
+      StatusPedido.AGUARDANDO_FATURAMENTO,
+      StatusPedido.FATURADO,
+      StatusPedido.EM_ROTA,
+      StatusPedido.RECEBIMENTO_NOTA
+    ];
+    
+    const itemsWithStatus: ItemWithStatus[] = await Promise.all(
+      filtered.map(async (item) => {
+        try {
+          // Buscar pedidos em andamento que contenham este item (pelo codigo_item)
+          const pedidosComItem = await Pedido.find({
+            status_atual: { $in: statusEmAndamento },
+            'itens.codigo_item': item.codigo_item
+          })
+            .sort({ data_criacao: 1 }) // Ordenar por data_criacao ASC (mais antigo primeiro)
+            .limit(1) // Pegar apenas o mais antigo
+            .select('status_atual numero');
+          
+          if (pedidosComItem.length > 0) {
+            const pedidoMaisAntigo = pedidosComItem[0];
+            return {
+              ...item,
+              status_pedido: pedidoMaisAntigo.status_atual,
+              numero_pedido: pedidoMaisAntigo.numero
+            };
+          }
+          
+          return item;
+        } catch (error) {
+          console.error(`Erro ao buscar pedido para item ${item.codigo_item}:`, error);
+          return item;
+        }
+      })
+    );
+    
+    res.json(itemsWithStatus);
+  } catch (error) {
+    console.error('❌ Erro ao buscar itens com status:', error);
     res.status(500).json({ message: 'Erro ao buscar itens' });
   }
 });

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, Search, Filter, ShoppingCart, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import api from '../services/api';
-import { Item } from '../types';
+import { Item, StatusPedido } from '../types';
 
 const ItemsAnalysisPage = () => {
   const navigate = useNavigate();
@@ -32,7 +32,7 @@ const ItemsAnalysisPage = () => {
   const fetchItems = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/items');
+      const response = await api.get('/items/with-status/all');
       setItems(response.data);
     } catch (error) {
       console.error('Erro ao buscar itens:', error);
@@ -394,6 +394,44 @@ const ItemsAnalysisPage = () => {
     }).format(value);
   };
 
+  const getStatusBadgeColor = (status: StatusPedido) => {
+    switch (status) {
+      case StatusPedido.ANALISE_COTACAO:
+        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case StatusPedido.ENVIADO_FORNECEDOR:
+        return 'bg-blue-100 text-blue-800 border-blue-300';
+      case StatusPedido.AGUARDANDO_FATURAMENTO:
+        return 'bg-purple-100 text-purple-800 border-purple-300';
+      case StatusPedido.FATURADO:
+        return 'bg-indigo-100 text-indigo-800 border-indigo-300';
+      case StatusPedido.EM_ROTA:
+        return 'bg-cyan-100 text-cyan-800 border-cyan-300';
+      case StatusPedido.RECEBIMENTO_NOTA:
+        return 'bg-teal-100 text-teal-800 border-teal-300';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
+
+  const getStatusLabel = (status: StatusPedido) => {
+    switch (status) {
+      case StatusPedido.ANALISE_COTACAO:
+        return 'Análise';
+      case StatusPedido.ENVIADO_FORNECEDOR:
+        return 'Enviado';
+      case StatusPedido.AGUARDANDO_FATURAMENTO:
+        return 'Aguard. Fat.';
+      case StatusPedido.FATURADO:
+        return 'Faturado';
+      case StatusPedido.EM_ROTA:
+        return 'Em Rota';
+      case StatusPedido.RECEBIMENTO_NOTA:
+        return 'Recebimento';
+      default:
+        return status;
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -718,6 +756,12 @@ const ItemsAnalysisPage = () => {
                   Previsão Fim{renderSortIcon('previsao_fim')}
                 </th>
                 <th 
+                  className="px-0.5 py-1 text-center font-semibold text-gray-700 uppercase" 
+                  style={{ fontSize: '0.6rem' }}
+                >
+                  Status Pedido
+                </th>
+                <th 
                   className="px-0.5 py-1 text-center font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100" 
                   style={{ fontSize: '0.6rem' }}
                   onClick={() => handleSort('dias_cobertura')}
@@ -735,7 +779,7 @@ const ItemsAnalysisPage = () => {
             >
               {filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={16} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={17} className="px-6 py-12 text-center text-gray-500">
                     <Package className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                     <p>Nenhum item encontrado</p>
                   </td>
@@ -808,6 +852,25 @@ const ItemsAnalysisPage = () => {
                     </td>
                     <td className="px-0.5 py-0.5 text-center text-gray-700 font-medium" style={{ fontSize: '0.6rem' }}>
                       {item.previsao_fim_estoque || '-'}
+                    </td>
+                    <td className="px-0.5 py-0.5 text-center" style={{ fontSize: '0.55rem' }}>
+                      {item.status_pedido ? (
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span 
+                            className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium border ${getStatusBadgeColor(item.status_pedido)}`}
+                            title={`Pedido ${item.numero_pedido}`}
+                          >
+                            {getStatusLabel(item.status_pedido)}
+                          </span>
+                          {item.numero_pedido && (
+                            <span className="text-gray-500 text-xs">
+                              #{item.numero_pedido}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
                     </td>
                     <td className="px-0.5 py-0.5 text-center font-semibold" style={{ fontSize: '0.6rem' }}>
                       <span className={`${
