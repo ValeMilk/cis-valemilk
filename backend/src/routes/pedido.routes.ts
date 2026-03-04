@@ -88,13 +88,13 @@ router.post('/', authMiddleware, requireRole(PerfilEnum.COMPRADOR, PerfilEnum.AD
       numero,
       comprador_id: user._id,
       comprador_nome: user.nome,
-      status_atual: StatusPedido.ENVIADO_FORNECEDOR,
+      status_atual: StatusPedido.ANALISE_COTACAO,
       historico_status: [{
-        status: StatusPedido.ENVIADO_FORNECEDOR,
+        status: StatusPedido.ANALISE_COTACAO,
         usuario_id: user._id,
         usuario_nome: user.nome,
         data: new Date(),
-        observacao: 'Pedido criado e enviado ao fornecedor'
+        observacao: 'Pedido criado - em análise de cotação'
       }]
     });
 
@@ -170,6 +170,35 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res) => {
 });
 
 // Aguardando faturamento
+// Advance from ANALISE_COTACAO to ENVIADO_FORNECEDOR
+router.post('/:id/enviar-fornecedor', authMiddleware, requireRole(PerfilEnum.COMPRADOR, PerfilEnum.DIRETORIA, PerfilEnum.ADMIN), async (req: AuthRequest, res) => {
+  try {
+    const pedido = await Pedido.findById(req.params.id);
+    if (!pedido) {
+      return res.status(404).json({ message: 'Pedido não encontrado' });
+    }
+
+    if (pedido.status_atual !== StatusPedido.ANALISE_COTACAO) {
+      return res.status(400).json({ message: 'Status inválido para esta ação' });
+    }
+
+    const user = await User.findById(req.user!.id);
+    pedido.status_atual = StatusPedido.ENVIADO_FORNECEDOR;
+    pedido.historico_status.push({
+      status: StatusPedido.ENVIADO_FORNECEDOR,
+      usuario_id: user!._id,
+      usuario_nome: user!.nome,
+      data: new Date(),
+      observacao: req.body.observacao || 'Pedido enviado ao fornecedor'
+    });
+
+    await pedido.save();
+    res.json(pedido);
+  } catch (error) {
+    res.status(500).json({ message: 'Erro ao atualizar status' });
+  }
+});
+
 router.post('/:id/aguardando-faturamento', authMiddleware, requireRole(PerfilEnum.COMPRADOR, PerfilEnum.DIRETORIA, PerfilEnum.ADMIN), async (req: AuthRequest, res) => {
   try {
     const pedido = await Pedido.findById(req.params.id);

@@ -180,6 +180,10 @@ const PedidoDetailPage = () => {
     // Mapeamento de status atual para próxima ação
     const statusActions: Record<StatusPedido, { endpoint: string; message: string }> = {
       [StatusPedido.RASCUNHO]: { endpoint: '', message: '' },
+      [StatusPedido.ANALISE_COTACAO]: { 
+        endpoint: 'enviar-fornecedor', 
+        message: 'Pedido enviado ao fornecedor!' 
+      },
       [StatusPedido.ENVIADO_FORNECEDOR]: { 
         endpoint: 'aguardando-faturamento', 
         message: 'Status atualizado para Aguardando Faturamento!' 
@@ -234,6 +238,7 @@ const PedidoDetailPage = () => {
     
     const labels: Record<StatusPedido, string> = {
       [StatusPedido.RASCUNHO]: '',
+      [StatusPedido.ANALISE_COTACAO]: 'Enviar ao Fornecedor',
       [StatusPedido.ENVIADO_FORNECEDOR]: 'Aguardando Faturamento',
       [StatusPedido.AGUARDANDO_FATURAMENTO]: 'Marcar Em Rota',
       [StatusPedido.EM_ROTA]: 'Registrar Recebimento',

@@ -7,6 +7,7 @@ interface StatusStepperProps {
 
 const StatusStepper: React.FC<StatusStepperProps> = ({ currentStatus }) => {
   const steps = [
+    { status: StatusPedido.ANALISE_COTACAO, label: 'Análise de Cotação' },
     { status: StatusPedido.ENVIADO_FORNECEDOR, label: 'Enviado ao Fornecedor' },
     { status: StatusPedido.AGUARDANDO_FATURAMENTO, label: 'Aguardando Faturamento' },
     { status: StatusPedido.EM_ROTA, label: 'Em Rota' },
