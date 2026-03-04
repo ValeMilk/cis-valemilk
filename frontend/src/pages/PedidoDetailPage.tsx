@@ -254,6 +254,13 @@ const PedidoDetailPage = () => {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const dataFormatada = date.toLocaleDateString('pt-BR');
+    const horaFormatada = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return `${dataFormatada} às ${horaFormatada}`;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -458,7 +465,7 @@ const PedidoDetailPage = () => {
               📊 Análise dos Itens no Momento da Criação do Pedido
             </h2>
             <p className="text-sm text-gray-600 mb-4">
-              Estes dados representam a situação dos itens no momento em que o pedido foi criado ({formatDate(pedido.data_criacao)})
+              Estes dados representam a situação dos itens no momento em que o pedido foi criado ({formatDateTime(pedido.data_criacao)})
             </p>
             
             <div className="overflow-x-auto">
