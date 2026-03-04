@@ -146,6 +146,7 @@ const CreatePedidoPage = () => {
           estoque_atual: pi.item.estoque_atual,
           giro_mensal: pi.item.giro_mensal,
           media_giro_trimestre: pi.item.media_giro_trimestre,
+          valor_ultima_entrada: pi.item.valorUltimaEntrada,
           data_ultima_entrada: pi.item.data_ultima_entrada,
           previsao_fim_estoque: pi.item.previsao_fim_estoque,
           preco_unitario: 0,

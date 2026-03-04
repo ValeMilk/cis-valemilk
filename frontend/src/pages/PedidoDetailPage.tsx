@@ -447,6 +447,107 @@ const PedidoDetailPage = () => {
             <PedidoPrintView ref={printRef} pedido={pedido} />
           </div>
 
+          {/* Análise dos Itens no Momento da Criação */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              📊 Análise dos Itens no Momento da Criação do Pedido
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Estes dados representam a situação dos itens no momento em que o pedido foi criado ({formatDate(pedido.data_criacao)})
+            </p>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-700">Código</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-700">Descrição</th>
+                    <th className="px-2 py-2 text-center font-semibold text-gray-700">CL</th>
+                    <th className="px-2 py-2 text-right font-semibold text-gray-700">Dep.Aberto</th>
+                    <th className="px-2 py-2 text-right font-semibold text-gray-700">Dep.Interno</th>
+                    <th className="px-2 py-2 text-right font-semibold text-gray-700">Dep.Externo</th>
+                    <th className="px-2 py-2 text-right font-semibold text-gray-700">Saldo Total</th>
+                    <th className="px-2 py-2 text-right font-semibold text-gray-700">Giro Mensal</th>
+                    <th className="px-2 py-2 text-right font-semibold text-gray-700">Méd Trimestre</th>
+                    <th className="px-2 py-2 text-right font-semibold text-gray-700">Vlr Última</th>
+                    <th className="px-2 py-2 text-center font-semibold text-gray-700">Dt Última</th>
+                    <th className="px-2 py-2 text-center font-semibold text-gray-700">Prev Fim</th>
+                    <th className="px-2 py-2 text-center font-semibold text-gray-700">Dias Cobertura</th>
+                    <th className="px-2 py-2 text-center font-semibold text-gray-700 bg-blue-50">Qtd Pedida</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {pedido.itens.map((item, index) => {
+                    const saldoTotal = (item.saldo_dep_aberto || 0) + (item.saldo_dep_fechado_interno || 0) + (item.saldo_dep_fechado_externo || 0);
+                    
+                    // Calcular dias de cobertura no momento da criação
+                    let diasCobertura = '-';
+                    let corDias = 'text-gray-600';
+                    
+                    if (item.previsao_fim_estoque && item.previsao_fim_estoque !== 'Sem Estoque' && item.previsao_fim_estoque !== 'Sem Consumo' && item.previsao_fim_estoque !== '-') {
+                      try {
+                        const [dia, mes, ano] = item.previsao_fim_estoque.split('/').map(Number);
+                        const dataPrevFim = new Date(ano, mes - 1, dia);
+                        const dataCriacao = new Date(pedido.data_criacao);
+                        dataCriacao.setHours(0, 0, 0, 0);
+                        const diffTime = dataPrevFim.getTime() - dataCriacao.getTime();
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        diasCobertura = `${diffDays}`;
+                        
+                        if (diffDays <= 30) corDias = 'text-red-600 font-bold';
+                        else if (diffDays <= 60) corDias = 'text-orange-600 font-semibold';
+                      } catch (error) {
+                        // Mantém '-'
+                      }
+                    }
+                    
+                    return (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-2 py-2 font-mono">{item.codigo_item}</td>
+                        <td className="px-2 py-2">{item.descricao}</td>
+                        <td className="px-2 py-2 text-center">
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                            item.classe_abc === 'A' ? 'bg-green-100 text-green-800' :
+                            item.classe_abc === 'B' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {item.classe_abc}
+                          </span>
+                        </td>
+                        <td className="px-2 py-2 text-right">{item.saldo_dep_aberto?.toFixed(2) || '0.00'}</td>
+                        <td className="px-2 py-2 text-right">{item.saldo_dep_fechado_interno?.toFixed(2) || '0.00'}</td>
+                        <td className="px-2 py-2 text-right">{item.saldo_dep_fechado_externo?.toFixed(2) || '0.00'}</td>
+                        <td className="px-2 py-2 text-right font-semibold">{saldoTotal.toFixed(2)}</td>
+                        <td className="px-2 py-2 text-right">{item.giro_mensal?.toFixed(2) || '0.00'}</td>
+                        <td className="px-2 py-2 text-right">{item.media_giro_trimestre?.toFixed(2) || '0.00'}</td>
+                        <td className="px-2 py-2 text-right">
+                          {item.valor_ultima_entrada 
+                            ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_ultima_entrada)
+                            : 'R$ 0,00'}
+                        </td>
+                        <td className="px-2 py-2 text-center">{item.data_ultima_entrada || '-'}</td>
+                        <td className="px-2 py-2 text-center">{item.previsao_fim_estoque || '-'}</td>
+                        <td className={`px-2 py-2 text-center font-semibold ${corDias}`}>
+                          {diasCobertura}
+                        </td>
+                        <td className="px-2 py-2 text-center bg-blue-50 font-bold text-blue-700">
+                          {item.quantidade_solicitada}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+              <p className="text-sm text-blue-800">
+                <strong>💡 Importante:</strong> Esta análise mostra o contexto em que o pedido foi criado, 
+                permitindo entender a necessidade e urgência de cada item no momento da solicitação.
+              </p>
+            </div>
+          </div>
+
           {/* Informações Adicionais na Tela */}
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">

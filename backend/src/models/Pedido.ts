@@ -17,6 +17,7 @@ export interface IPedidoItem {
   estoque_atual: number;
   giro_mensal: number;
   media_giro_trimestre: number;
+  valor_ultima_entrada: number;
   data_ultima_entrada: string;
   previsao_fim_estoque: string;
   preco_unitario: number;
@@ -94,6 +95,7 @@ const pedidoSchema = new Schema<IPedido>({
     estoque_atual: Number,
     giro_mensal: Number,
     media_giro_trimestre: Number,
+    valor_ultima_entrada: Number,
     data_ultima_entrada: String,
     previsao_fim_estoque: String,
     preco_unitario: Number,

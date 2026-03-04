@@ -39,6 +39,7 @@ export interface PedidoItem {
   estoque_atual: number;
   giro_mensal: number;
   media_giro_trimestre: number;
+  valor_ultima_entrada: number;
   data_ultima_entrada: string;
   previsao_fim_estoque: string;
   preco_unitario: number;
