@@ -137,9 +137,12 @@ export default function DashboardPage() {
                       Ver Detalhes
                     </button>
                   </div>
-                  <StatusStepper currentStatus={pedido.status_atual} />
+                  <StatusStepper 
+                    currentStatus={pedido.status_atual}
+                    dataEntregaPrevista={pedido.data_prevista_entrega}
+                  />
                 </div>
-              )})}
+              )}))}
           </div>
         </div>
       )}

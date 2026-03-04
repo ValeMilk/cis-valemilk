@@ -3,9 +3,10 @@ import { StatusPedido } from '../types';
 
 interface StatusStepperProps {
   currentStatus: StatusPedido;
+  dataEntregaPrevista?: string;
 }
 
-const StatusStepper: React.FC<StatusStepperProps> = ({ currentStatus }) => {
+const StatusStepper: React.FC<StatusStepperProps> = ({ currentStatus, dataEntregaPrevista }) => {
   const steps = [
     { status: StatusPedido.ANALISE_COTACAO, label: 'Análise de Cotação' },
     { status: StatusPedido.ENVIADO_FORNECEDOR, label: 'Enviado ao Fornecedor' },
@@ -26,6 +27,23 @@ const StatusStepper: React.FC<StatusStepperProps> = ({ currentStatus }) => {
     return currentStepIndex >= index;
   };
 
+  // Calcular dias restantes se houver data de entrega
+  const calcularDiasRestantes = () => {
+    if (!dataEntregaPrevista) return null;
+    
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const dataEntrega = new Date(dataEntregaPrevista);
+    dataEntrega.setHours(0, 0, 0, 0);
+    const diffTime = dataEntrega.getTime() - hoje.getTime();
+    const diasRestantes = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const dataFormatada = dataEntrega.toLocaleDateString('pt-BR');
+    
+    return { diasRestantes, dataFormatada };
+  };
+
+  const infoEntrega = calcularDiasRestantes();
+
   return (
     <div className="py-8">
       {/* Labels no topo */}
@@ -39,6 +57,28 @@ const StatusStepper: React.FC<StatusStepperProps> = ({ currentStatus }) => {
             >
               {step.label}
             </p>
+            {/* Mostrar data de entrega no passo "Em Rota" */}
+            {step.status === StatusPedido.EM_ROTA && dataEntregaPrevista && infoEntrega && (
+              <div className="mt-2 text-center">
+                <p className="text-xs text-green-700 font-semibold">
+                  📅 {infoEntrega.dataFormatada}
+                </p>
+                <p className={`text-xs font-bold mt-0.5 ${
+                  infoEntrega.diasRestantes < 0 
+                    ? 'text-red-600' 
+                    : infoEntrega.diasRestantes <= 3 
+                    ? 'text-orange-600' 
+                    : 'text-green-600'
+                }`}>
+                  {infoEntrega.diasRestantes < 0 
+                    ? `Atrasado ${Math.abs(infoEntrega.diasRestantes)} dia${Math.abs(infoEntrega.diasRestantes) !== 1 ? 's' : ''}` 
+                    : infoEntrega.diasRestantes === 0 
+                    ? 'Entrega hoje!' 
+                    : `Faltam ${infoEntrega.diasRestantes} dia${infoEntrega.diasRestantes !== 1 ? 's' : ''}`
+                  }
+                </p>
+              </div>
+            )}
           </div>
         ))}
       </div>

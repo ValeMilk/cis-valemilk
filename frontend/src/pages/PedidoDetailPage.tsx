@@ -480,7 +480,10 @@ const PedidoDetailPage = () => {
               <h2 className="text-lg font-semibold text-gray-900 mb-4">
                 Acompanhamento do Pedido
               </h2>
-              <StatusStepper currentStatus={pedido.status_atual} />
+              <StatusStepper 
+                currentStatus={pedido.status_atual} 
+                dataEntregaPrevista={pedido.data_prevista_entrega}
+              />
             </div>
           )}
 
