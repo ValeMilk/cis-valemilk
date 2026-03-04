@@ -552,7 +552,10 @@ const PedidoDetailPage = () => {
                 Acompanhamento do Pedido
               </h2>
               <StatusStepper 
-                currentStatus={pedido.status_atual} 
+                currentStatus={pedido.status_atual}
+                dataPrevisaoFaturamento={pedido.data_previsao_faturamento}
+                numeroNotaFiscal={pedido.numero_nota_fiscal}
+                dataFaturamento={pedido.data_faturamento}
                 dataEntregaPrevista={pedido.data_prevista_entrega}
               />
             </div>

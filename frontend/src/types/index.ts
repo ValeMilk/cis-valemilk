@@ -175,6 +175,9 @@ export interface DashboardData {
     status_atual: StatusPedido;
     valor_total: number;
     data_criacao: string;
+    data_previsao_faturamento?: string;
+    numero_nota_fiscal?: string;
+    data_faturamento?: string;
     data_prevista_entrega?: string;
   }>;
 }

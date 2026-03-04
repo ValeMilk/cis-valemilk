@@ -139,6 +139,9 @@ export default function DashboardPage() {
                   </div>
                   <StatusStepper 
                     currentStatus={pedido.status_atual}
+                    dataPrevisaoFaturamento={pedido.data_previsao_faturamento}
+                    numeroNotaFiscal={pedido.numero_nota_fiscal}
+                    dataFaturamento={pedido.data_faturamento}
                     dataEntregaPrevista={pedido.data_prevista_entrega}
                   />
                 </div>

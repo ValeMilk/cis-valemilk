@@ -3,10 +3,19 @@ import { StatusPedido } from '../types';
 
 interface StatusStepperProps {
   currentStatus: StatusPedido;
+  dataPrevisaoFaturamento?: string;
+  numeroNotaFiscal?: string;
+  dataFaturamento?: string;
   dataEntregaPrevista?: string;
 }
 
-const StatusStepper: React.FC<StatusStepperProps> = ({ currentStatus, dataEntregaPrevista }) => {
+const StatusStepper: React.FC<StatusStepperProps> = ({ 
+  currentStatus, 
+  dataPrevisaoFaturamento,
+  numeroNotaFiscal,
+  dataFaturamento,
+  dataEntregaPrevista 
+}) => {
   const steps = [
     { status: StatusPedido.ANALISE_COTACAO, label: 'Análise de Cotação' },
     { status: StatusPedido.ENVIADO_FORNECEDOR, label: 'Enviado ao Fornecedor' },
@@ -28,22 +37,24 @@ const StatusStepper: React.FC<StatusStepperProps> = ({ currentStatus, dataEntreg
     return currentStepIndex >= index;
   };
 
-  // Calcular dias restantes se houver data de entrega
-  const calcularDiasRestantes = () => {
-    if (!dataEntregaPrevista) return null;
+  // Calcular dias restantes para uma data
+  const calcularDiasRestantes = (dataString?: string) => {
+    if (!dataString) return null;
     
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
-    const dataEntrega = new Date(dataEntregaPrevista);
-    dataEntrega.setHours(0, 0, 0, 0);
-    const diffTime = dataEntrega.getTime() - hoje.getTime();
+    const data = new Date(dataString);
+    data.setHours(0, 0, 0, 0);
+    const diffTime = data.getTime() - hoje.getTime();
     const diasRestantes = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const dataFormatada = dataEntrega.toLocaleDateString('pt-BR');
+    const dataFormatada = data.toLocaleDateString('pt-BR');
     
     return { diasRestantes, dataFormatada };
   };
 
-  const infoEntrega = calcularDiasRestantes();
+  const infoPrevisaoFaturamento = calcularDiasRestantes(dataPrevisaoFaturamento);
+  const infoFaturamento = dataFaturamento ? { dataFormatada: new Date(dataFaturamento).toLocaleDateString('pt-BR') } : null;
+  const infoEntrega = calcularDiasRestantes(dataEntregaPrevista);
 
   return (
     <div className="py-8">
@@ -58,6 +69,42 @@ const StatusStepper: React.FC<StatusStepperProps> = ({ currentStatus, dataEntreg
             >
               {step.label}
             </p>
+            
+            {/* Mostrar data de previsão no passo "Aguardando Faturamento" */}
+            {step.status === StatusPedido.AGUARDANDO_FATURAMENTO && dataPrevisaoFaturamento && infoPrevisaoFaturamento && (
+              <div className="mt-2 text-center">
+                <p className="text-xs text-blue-700 font-semibold">
+                  📅 {infoPrevisaoFaturamento.dataFormatada}
+                </p>
+                <p className={`text-xs font-bold mt-0.5 ${
+                  infoPrevisaoFaturamento.diasRestantes < 0 
+                    ? 'text-red-600' 
+                    : infoPrevisaoFaturamento.diasRestantes <= 3 
+                    ? 'text-orange-600' 
+                    : 'text-blue-600'
+                }`}>
+                  {infoPrevisaoFaturamento.diasRestantes < 0 
+                    ? `Atrasado ${Math.abs(infoPrevisaoFaturamento.diasRestantes)} dia${Math.abs(infoPrevisaoFaturamento.diasRestantes) !== 1 ? 's' : ''}` 
+                    : infoPrevisaoFaturamento.diasRestantes === 0 
+                    ? 'Fatura hoje!' 
+                    : `Faltam ${infoPrevisaoFaturamento.diasRestantes} dia${infoPrevisaoFaturamento.diasRestantes !== 1 ? 's' : ''}`
+                  }
+                </p>
+              </div>
+            )}
+            
+            {/* Mostrar dados de faturamento no passo "Faturado" */}
+            {step.status === StatusPedido.FATURADO && numeroNotaFiscal && infoFaturamento && (
+              <div className="mt-2 text-center">
+                <p className="text-xs text-purple-700 font-semibold">
+                  📄 NF: {numeroNotaFiscal}
+                </p>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  {infoFaturamento.dataFormatada}
+                </p>
+              </div>
+            )}
+            
             {/* Mostrar data de entrega no passo "Em Rota" */}
             {step.status === StatusPedido.EM_ROTA && dataEntregaPrevista && infoEntrega && (
               <div className="mt-2 text-center">
