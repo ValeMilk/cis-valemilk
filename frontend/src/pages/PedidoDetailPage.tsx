@@ -678,17 +678,86 @@ const PedidoDetailPage = () => {
               <div>
                 <span className="text-gray-600">Data de Criação:</span>
                 <span className="ml-2 font-medium text-gray-900">
-                  {formatDate(pedido.data_criacao)}
+                  {formatDateTime(pedido.data_criacao)}
                 </span>
               </div>
-              {pedido.data_prevista_entrega && (
+              
+              {/* Informações de Faturamento */}
+              {pedido.data_previsao_faturamento && (
                 <div>
-                  <span className="text-gray-600">Data de Entrega Prevista:</span>
-                  <span className="ml-2 font-medium text-green-700">
-                    {formatDate(pedido.data_prevista_entrega)}
+                  <span className="text-gray-600">Previsão de Faturamento:</span>
+                  <span className="ml-2 font-medium text-blue-700">
+                    {formatDate(pedido.data_previsao_faturamento)}
                   </span>
                 </div>
               )}
+              
+              {pedido.numero_nota_fiscal && (
+                <>
+                  <div>
+                    <span className="text-gray-600">Nota Fiscal:</span>
+                    <span className="ml-2 font-medium text-gray-900">
+                      {pedido.numero_nota_fiscal}
+                    </span>
+                  </div>
+                  {pedido.data_faturamento && (
+                    <div>
+                      <span className="text-gray-600">Data de Faturamento:</span>
+                      <span className="ml-2 font-medium text-gray-900">
+                        {formatDate(pedido.data_faturamento)}
+                      </span>
+                    </div>
+                  )}
+                  {pedido.valor_nota_fiscal && (
+                    <div>
+                      <span className="text-gray-600">Valor da Nota Fiscal:</span>
+                      <span className="ml-2 font-medium text-gray-900">
+                        R$ {pedido.valor_nota_fiscal.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+              
+              {/* Data de Entrega com Dias Restantes */}
+              {pedido.data_prevista_entrega && (() => {
+                const hoje = new Date();
+                hoje.setHours(0, 0, 0, 0);
+                const dataEntrega = new Date(pedido.data_prevista_entrega);
+                dataEntrega.setHours(0, 0, 0, 0);
+                const diffTime = dataEntrega.getTime() - hoje.getTime();
+                const diasRestantes = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                return (
+                  <div className="col-span-2 border-t pt-4 mt-2">
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <span className="text-gray-600">Data de Entrega Prevista:</span>
+                        <span className="ml-2 font-medium text-green-700">
+                          📅 {formatDate(pedido.data_prevista_entrega)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${
+                          diasRestantes < 0 
+                            ? 'bg-red-100 text-red-700' 
+                            : diasRestantes <= 3 
+                            ? 'bg-orange-100 text-orange-700' 
+                            : 'bg-green-100 text-green-700'
+                        }`}>
+                          {diasRestantes < 0 
+                            ? `⚠️ Atrasado ${Math.abs(diasRestantes)} dia${Math.abs(diasRestantes) !== 1 ? 's' : ''}` 
+                            : diasRestantes === 0 
+                            ? '🎉 Entrega hoje!' 
+                            : `⏳ Faltam ${diasRestantes} dia${diasRestantes !== 1 ? 's' : ''}`
+                          }
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+              
               <div>
                 <span className="text-gray-600">Total de Itens:</span>
                 <span className="ml-2 font-medium text-gray-900">
