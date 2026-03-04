@@ -23,7 +23,6 @@ router.get('/', authMiddleware, async (req, res) => {
 
     // Pedidos em aberto (não concluídos/cancelados)
     const statusAberto = [
-      StatusPedido.RASCUNHO,
       StatusPedido.ENVIADO_FORNECEDOR,
       StatusPedido.AGUARDANDO_FATURAMENTO,
       StatusPedido.EM_ROTA,

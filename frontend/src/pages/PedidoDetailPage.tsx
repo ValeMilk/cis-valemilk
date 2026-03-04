@@ -112,8 +112,8 @@ const PedidoDetailPage = () => {
                          user.perfil === PerfilEnum.DIRETORIA || 
                          user.perfil === PerfilEnum.ADMIN;
     
-    // Apenas status RASCUNHO pode ser editado
-    const canEditByStatus = pedido.status_atual === StatusPedido.RASCUNHO;
+    // Apenas status ENVIADO_FORNECEDOR pode ser editado
+    const canEditByStatus = pedido.status_atual === StatusPedido.ENVIADO_FORNECEDOR;
     
     return canEditByRole && canEditByStatus;
   };
@@ -179,10 +179,7 @@ const PedidoDetailPage = () => {
 
     // Mapeamento de status atual para próxima ação
     const statusActions: Record<StatusPedido, { endpoint: string; message: string }> = {
-      [StatusPedido.RASCUNHO]: { 
-        endpoint: 'enviar-fornecedor', 
-        message: 'Pedido enviado ao fornecedor!' 
-      },
+      [StatusPedido.RASCUNHO]: { endpoint: '', message: '' },
       [StatusPedido.ENVIADO_FORNECEDOR]: { 
         endpoint: 'aguardando-faturamento', 
         message: 'Status atualizado para Aguardando Faturamento!' 
@@ -221,32 +218,22 @@ const PedidoDetailPage = () => {
     
     // Não pode avançar se já está aprovado ou cancelado
     if (pedido.status_atual === StatusPedido.APROVADO_DIRETORIA || 
-        pedido.status_atual === StatusPedido.CANCELADO) {
+        pedido.status_atual === StatusPedido.CANCELADO ||
+        pedido.status_atual === StatusPedido.RASCUNHO) {
       return false;
     }
 
-    // Verificar permissões por status
-    if (pedido.status_atual === StatusPedido.RASCUNHO) {
-      return user.perfil === PerfilEnum.COMPRADOR || user.perfil === PerfilEnum.ADMIN;
-    }
-    
-    if (pedido.status_atual === StatusPedido.RECEBIMENTO_NOTA) {
-      return user.perfil === PerfilEnum.DIRETORIA || user.perfil === PerfilEnum.ADMIN;
-    }
-
-    if (pedido.status_atual === StatusPedido.EM_ROTA) {
-      return user.perfil === PerfilEnum.RECEBIMENTO || user.perfil === PerfilEnum.ADMIN;
-    }
-
-    // Outros status podem ser avançados por qualquer um
-    return true;
+    // Apenas Admin, Comprador e Diretoria podem avançar status
+    return user.perfil === PerfilEnum.COMPRADOR || 
+           user.perfil === PerfilEnum.DIRETORIA || 
+           user.perfil === PerfilEnum.ADMIN;
   };
 
   const getNextStatusLabel = () => {
     if (!pedido) return '';
     
     const labels: Record<StatusPedido, string> = {
-      [StatusPedido.RASCUNHO]: 'Enviar ao Fornecedor',
+      [StatusPedido.RASCUNHO]: '',
       [StatusPedido.ENVIADO_FORNECEDOR]: 'Aguardando Faturamento',
       [StatusPedido.AGUARDANDO_FATURAMENTO]: 'Marcar Em Rota',
       [StatusPedido.EM_ROTA]: 'Registrar Recebimento',
@@ -446,8 +433,7 @@ const PedidoDetailPage = () => {
       ) : (
         <>
           {/* Status Stepper */}
-          {pedido.status_atual !== StatusPedido.RASCUNHO && 
-           pedido.status_atual !== StatusPedido.CANCELADO && (
+          {pedido.status_atual !== StatusPedido.CANCELADO && (
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">
                 Acompanhamento do Pedido

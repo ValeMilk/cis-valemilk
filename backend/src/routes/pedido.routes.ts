@@ -61,13 +61,13 @@ router.post('/', authMiddleware, requireRole(PerfilEnum.COMPRADOR, PerfilEnum.AD
       numero,
       comprador_id: user._id,
       comprador_nome: user.nome,
-      status_atual: StatusPedido.RASCUNHO,
+      status_atual: StatusPedido.ENVIADO_FORNECEDOR,
       historico_status: [{
-        status: StatusPedido.RASCUNHO,
+        status: StatusPedido.ENVIADO_FORNECEDOR,
         usuario_id: user._id,
         usuario_nome: user.nome,
         data: new Date(),
-        observacao: 'Pedido criado'
+        observacao: 'Pedido criado e enviado ao fornecedor'
       }]
     });
 
@@ -96,8 +96,8 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res) => {
       return res.status(404).json({ message: 'Pedido não encontrado' });
     }
 
-    // Verificar status: apenas RASCUNHO
-    if (pedido.status_atual !== StatusPedido.RASCUNHO) {
+    // Verificar status: apenas ENVIADO_FORNECEDOR
+    if (pedido.status_atual !== StatusPedido.ENVIADO_FORNECEDOR) {
       return res.status(400).json({ message: 'Pedido não pode ser editado neste status' });
     }
 
@@ -142,37 +142,8 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res) => {
   }
 });
 
-// Enviar ao fornecedor (primeiro passo do fluxo)
-router.post('/:id/enviar-fornecedor', authMiddleware, requireRole(PerfilEnum.COMPRADOR, PerfilEnum.ADMIN), async (req: AuthRequest, res) => {
-  try {
-    const pedido = await Pedido.findById(req.params.id);
-    if (!pedido) {
-      return res.status(404).json({ message: 'Pedido não encontrado' });
-    }
-
-    if (pedido.status_atual !== StatusPedido.RASCUNHO) {
-      return res.status(400).json({ message: 'Status inválido para esta ação' });
-    }
-
-    const user = await User.findById(req.user!.id);
-    pedido.status_atual = StatusPedido.ENVIADO_FORNECEDOR;
-    pedido.historico_status.push({
-      status: StatusPedido.ENVIADO_FORNECEDOR,
-      usuario_id: user!._id,
-      usuario_nome: user!.nome,
-      data: new Date(),
-      observacao: req.body.observacao || 'Pedido enviado ao fornecedor'
-    });
-
-    await pedido.save();
-    res.json(pedido);
-  } catch (error) {
-    res.status(500).json({ message: 'Erro ao enviar ao fornecedor' });
-  }
-});
-
 // Aguardando faturamento
-router.post('/:id/aguardando-faturamento', authMiddleware, async (req: AuthRequest, res) => {
+router.post('/:id/aguardando-faturamento', authMiddleware, requireRole(PerfilEnum.COMPRADOR, PerfilEnum.DIRETORIA, PerfilEnum.ADMIN), async (req: AuthRequest, res) => {
   try {
     const pedido = await Pedido.findById(req.params.id);
     if (!pedido) {
@@ -201,7 +172,7 @@ router.post('/:id/aguardando-faturamento', authMiddleware, async (req: AuthReque
 });
 
 // Em rota
-router.post('/:id/em-rota', authMiddleware, async (req: AuthRequest, res) => {
+router.post('/:id/em-rota', authMiddleware, requireRole(PerfilEnum.COMPRADOR, PerfilEnum.DIRETORIA, PerfilEnum.ADMIN), async (req: AuthRequest, res) => {
   try {
     const pedido = await Pedido.findById(req.params.id);
     if (!pedido) {
@@ -230,7 +201,7 @@ router.post('/:id/em-rota', authMiddleware, async (req: AuthRequest, res) => {
 });
 
 // Recebimento de nota
-router.post('/:id/recebimento-nota', authMiddleware, requireRole(PerfilEnum.RECEBIMENTO, PerfilEnum.ADMIN), async (req: AuthRequest, res) => {
+router.post('/:id/recebimento-nota', authMiddleware, requireRole(PerfilEnum.COMPRADOR, PerfilEnum.DIRETORIA, PerfilEnum.ADMIN), async (req: AuthRequest, res) => {
   try {
     const pedido = await Pedido.findById(req.params.id);
     if (!pedido) {
