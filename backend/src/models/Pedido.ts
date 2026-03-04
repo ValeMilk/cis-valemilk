@@ -57,6 +57,10 @@ export interface IPedido extends Document {
   itens: IPedidoItem[];
   valor_total: number;
   data_criacao: Date;
+  data_previsao_faturamento?: Date;
+  numero_nota_fiscal?: string;
+  data_faturamento?: Date;
+  valor_nota_fiscal?: number;
   data_prevista_entrega?: Date;
   observacoes?: string;
   historico_status: IHistoricoStatus[];
@@ -103,6 +107,10 @@ const pedidoSchema = new Schema<IPedido>({
   }],
   valor_total: { type: Number, required: true },
   data_criacao: { type: Date, default: Date.now },
+  data_previsao_faturamento: Date,
+  numero_nota_fiscal: String,
+  data_faturamento: Date,
+  valor_nota_fiscal: Number,
   data_prevista_entrega: Date,
   observacoes: String,
   historico_status: [{

@@ -11,6 +11,7 @@ const StatusStepper: React.FC<StatusStepperProps> = ({ currentStatus, dataEntreg
     { status: StatusPedido.ANALISE_COTACAO, label: 'Análise de Cotação' },
     { status: StatusPedido.ENVIADO_FORNECEDOR, label: 'Enviado ao Fornecedor' },
     { status: StatusPedido.AGUARDANDO_FATURAMENTO, label: 'Aguardando Faturamento' },
+    { status: StatusPedido.FATURADO, label: 'Faturado' },
     { status: StatusPedido.EM_ROTA, label: 'Em Rota' },
     { status: StatusPedido.RECEBIMENTO_NOTA, label: 'Recebimento de Nota' },
     { status: StatusPedido.APROVADO_DIRETORIA, label: 'Aprovado pela Diretoria' }

@@ -210,14 +210,63 @@ router.post('/:id/aguardando-faturamento', authMiddleware, requireRole(PerfilEnu
       return res.status(400).json({ message: 'Status inválido para esta ação' });
     }
 
+    // Validar se a data de previsão de faturamento foi fornecida
+    if (!req.body.data_previsao_faturamento) {
+      return res.status(400).json({ message: 'Data de previsão de faturamento é obrigatória' });
+    }
+
     const user = await User.findById(req.user!.id);
     pedido.status_atual = StatusPedido.AGUARDANDO_FATURAMENTO;
+    pedido.data_previsao_faturamento = new Date(req.body.data_previsao_faturamento);
     pedido.historico_status.push({
       status: StatusPedido.AGUARDANDO_FATURAMENTO,
       usuario_id: user!._id,
       usuario_nome: user!.nome,
       data: new Date(),
-      observacao: req.body.observacao
+      observacao: req.body.observacao || `Previsão de faturamento: ${new Date(req.body.data_previsao_faturamento).toLocaleDateString('pt-BR')}`
+    });
+
+    await pedido.save();
+    res.json(pedido);
+  } catch (error) {
+    res.status(500).json({ message: 'Erro ao atualizar status' });
+  }
+});
+
+// Faturado
+router.post('/:id/faturado', authMiddleware, requireRole(PerfilEnum.COMPRADOR, PerfilEnum.DIRETORIA, PerfilEnum.ADMIN), async (req: AuthRequest, res) => {
+  try {
+    const pedido = await Pedido.findById(req.params.id);
+    if (!pedido) {
+      return res.status(404).json({ message: 'Pedido não encontrado' });
+    }
+
+    if (pedido.status_atual !== StatusPedido.AGUARDANDO_FATURAMENTO) {
+      return res.status(400).json({ message: 'Status inválido para esta ação' });
+    }
+
+    // Validar campos obrigatórios
+    if (!req.body.numero_nota_fiscal) {
+      return res.status(400).json({ message: 'Número da nota fiscal é obrigatório' });
+    }
+    if (!req.body.data_faturamento) {
+      return res.status(400).json({ message: 'Data de faturamento é obrigatória' });
+    }
+    if (!req.body.valor_nota_fiscal) {
+      return res.status(400).json({ message: 'Valor da nota fiscal é obrigatório' });
+    }
+
+    const user = await User.findById(req.user!.id);
+    pedido.status_atual = StatusPedido.FATURADO;
+    pedido.numero_nota_fiscal = req.body.numero_nota_fiscal;
+    pedido.data_faturamento = new Date(req.body.data_faturamento);
+    pedido.valor_nota_fiscal = req.body.valor_nota_fiscal;
+    pedido.historico_status.push({
+      status: StatusPedido.FATURADO,
+      usuario_id: user!._id,
+      usuario_nome: user!.nome,
+      data: new Date(),
+      observacao: req.body.observacao || `NF: ${req.body.numero_nota_fiscal} - Faturado em ${new Date(req.body.data_faturamento).toLocaleDateString('pt-BR')} - Valor: R$ ${req.body.valor_nota_fiscal.toFixed(2)}`
     });
 
     await pedido.save();
@@ -235,7 +284,7 @@ router.post('/:id/em-rota', authMiddleware, requireRole(PerfilEnum.COMPRADOR, Pe
       return res.status(404).json({ message: 'Pedido não encontrado' });
     }
 
-    if (pedido.status_atual !== StatusPedido.AGUARDANDO_FATURAMENTO) {
+    if (pedido.status_atual !== StatusPedido.FATURADO) {
       return res.status(400).json({ message: 'Status inválido para esta ação' });
     }
 

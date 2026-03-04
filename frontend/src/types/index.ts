@@ -10,6 +10,7 @@ export enum StatusPedido {
   ANALISE_COTACAO = 'ANALISE_COTACAO',
   ENVIADO_FORNECEDOR = 'ENVIADO_FORNECEDOR',
   AGUARDANDO_FATURAMENTO = 'AGUARDANDO_FATURAMENTO',
+  FATURADO = 'FATURADO',
   EM_ROTA = 'EM_ROTA',
   RECEBIMENTO_NOTA = 'RECEBIMENTO_NOTA',
   APROVADO_DIRETORIA = 'APROVADO_DIRETORIA',
@@ -81,6 +82,10 @@ export interface Pedido {
   itens: PedidoItem[];
   valor_total: number;
   data_criacao: string;
+  data_previsao_faturamento?: string;
+  numero_nota_fiscal?: string;
+  data_faturamento?: string;
+  valor_nota_fiscal?: number;
   data_prevista_entrega?: string;
   observacoes?: string;
   historico_status: HistoricoStatus[];

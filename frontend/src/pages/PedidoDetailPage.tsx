@@ -22,6 +22,16 @@ const PedidoDetailPage = () => {
   const [showDateModal, setShowDateModal] = useState(false);
   const [dataEntregaPrevista, setDataEntregaPrevista] = useState('');
   
+  // Estados para modal de previsão de faturamento
+  const [showPrevisaoFaturamentoModal, setShowPrevisaoFaturamentoModal] = useState(false);
+  const [dataPrevisaoFaturamento, setDataPrevisaoFaturamento] = useState('');
+  
+  // Estados para modal de faturado
+  const [showFaturadoModal, setShowFaturadoModal] = useState(false);
+  const [numeroNotaFiscal, setNumeroNotaFiscal] = useState('');
+  const [dataFaturamento, setDataFaturamento] = useState('');
+  const [valorNotaFiscal, setValorNotaFiscal] = useState('');
+  
   // Estados para edição
   const [fornecedorId, setFornecedorId] = useState('');
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
@@ -181,8 +191,20 @@ const PedidoDetailPage = () => {
   const handleAvancarStatus = async () => {
     if (!pedido) return;
 
-    // Se está em AGUARDANDO_FATURAMENTO, precisa capturar a data de entrega
+    // Se está em ENVIADO_FORNECEDOR, precisa capturar a data de previsão de faturamento
+    if (pedido.status_atual === StatusPedido.ENVIADO_FORNECEDOR) {
+      setShowPrevisaoFaturamentoModal(true);
+      return;
+    }
+
+    // Se está em AGUARDANDO_FATURAMENTO, precisa capturar os dados de faturamento
     if (pedido.status_atual === StatusPedido.AGUARDANDO_FATURAMENTO) {
+      setShowFaturadoModal(true);
+      return;
+    }
+
+    // Se está em FATURADO, precisa capturar a data de entrega
+    if (pedido.status_atual === StatusPedido.FATURADO) {
       setShowDateModal(true);
       return;
     }
@@ -199,6 +221,10 @@ const PedidoDetailPage = () => {
         message: 'Status atualizado para Aguardando Faturamento!' 
       },
       [StatusPedido.AGUARDANDO_FATURAMENTO]: { 
+        endpoint: 'faturado', 
+        message: 'Status atualizado para Faturado!' 
+      },
+      [StatusPedido.FATURADO]: { 
         endpoint: 'em-rota', 
         message: 'Status atualizado para Em Rota!' 
       },
@@ -247,6 +273,50 @@ const PedidoDetailPage = () => {
     }
   };
 
+  const handleConfirmarPrevisaoFaturamento = async () => {
+    if (!dataPrevisaoFaturamento) {
+      alert('Por favor, informe a data de previsão de faturamento');
+      return;
+    }
+
+    try {
+      await api.post(`/pedidos/${id}/aguardando-faturamento`, {
+        data_previsao_faturamento: dataPrevisaoFaturamento
+      });
+      alert('Status atualizado para Aguardando Faturamento!');
+      setShowPrevisaoFaturamentoModal(false);
+      setDataPrevisaoFaturamento('');
+      fetchPedido();
+    } catch (error: any) {
+      console.error('Erro ao atualizar status:', error);
+      alert(error.response?.data?.message || 'Erro ao atualizar status');
+    }
+  };
+
+  const handleConfirmarFaturado = async () => {
+    if (!numeroNotaFiscal || !dataFaturamento || !valorNotaFiscal) {
+      alert('Por favor, preencha todos os campos');
+      return;
+    }
+
+    try {
+      await api.post(`/pedidos/${id}/faturado`, {
+        numero_nota_fiscal: numeroNotaFiscal,
+        data_faturamento: dataFaturamento,
+        valor_nota_fiscal: parseFloat(valorNotaFiscal)
+      });
+      alert('Status atualizado para Faturado!');
+      setShowFaturadoModal(false);
+      setNumeroNotaFiscal('');
+      setDataFaturamento('');
+      setValorNotaFiscal('');
+      fetchPedido();
+    } catch (error: any) {
+      console.error('Erro ao atualizar status:', error);
+      alert(error.response?.data?.message || 'Erro ao atualizar status');
+    }
+  };
+
   const canAdvanceStatus = () => {
     if (!pedido || !user) return false;
     
@@ -270,7 +340,8 @@ const PedidoDetailPage = () => {
       [StatusPedido.RASCUNHO]: '',
       [StatusPedido.ANALISE_COTACAO]: 'Enviar ao Fornecedor',
       [StatusPedido.ENVIADO_FORNECEDOR]: 'Aguardando Faturamento',
-      [StatusPedido.AGUARDANDO_FATURAMENTO]: 'Marcar Em Rota',
+      [StatusPedido.AGUARDANDO_FATURAMENTO]: 'Faturado',
+      [StatusPedido.FATURADO]: 'Marcar Em Rota',
       [StatusPedido.EM_ROTA]: 'Registrar Recebimento',
       [StatusPedido.RECEBIMENTO_NOTA]: 'Aprovar pela Diretoria',
       [StatusPedido.APROVADO_DIRETORIA]: '',
@@ -654,6 +725,117 @@ const PedidoDetailPage = () => {
             </div>
           )}
         </>
+      )}
+
+      {/* Modal para capturar previsão de faturamento */}
+      {showPrevisaoFaturamentoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Informar Previsão de Faturamento
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Digite a data de previsão de faturamento:
+            </p>
+            <input
+              type="date"
+              value={dataPrevisaoFaturamento}
+              onChange={(e) => setDataPrevisaoFaturamento(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4"
+              min={new Date().toISOString().split('T')[0]}
+            />
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowPrevisaoFaturamentoModal(false);
+                  setDataPrevisaoFaturamento('');
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmarPrevisaoFaturamento}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para capturar dados de faturamento */}
+      {showFaturadoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Informar Dados do Faturamento
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Preencha os dados da nota fiscal:
+            </p>
+            <div className="space-y-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Número da Nota Fiscal
+                </label>
+                <input
+                  type="text"
+                  value={numeroNotaFiscal}
+                  onChange={(e) => setNumeroNotaFiscal(e.target.value)}
+                  placeholder="Ex: 12345"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Data de Faturamento
+                </label>
+                <input
+                  type="date"
+                  value={dataFaturamento}
+                  onChange={(e) => setDataFaturamento(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  max={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Valor da Nota Fiscal
+                </label>
+                <input
+                  type="number"
+                  value={valorNotaFiscal}
+                  onChange={(e) => setValorNotaFiscal(e.target.value)}
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowFaturadoModal(false);
+                  setNumeroNotaFiscal('');
+                  setDataFaturamento('');
+                  setValorNotaFiscal('');
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmarFaturado}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Modal para capturar data de entrega */}
