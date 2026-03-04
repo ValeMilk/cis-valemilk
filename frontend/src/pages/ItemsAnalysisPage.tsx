@@ -198,6 +198,29 @@ const ItemsAnalysisPage = () => {
     }
   };
 
+  const calcularDiasCobertura = (previsaoFim: string): string => {
+    // Se não tem previsão válida, retorna traço
+    if (!previsaoFim || previsaoFim === 'Sem Estoque' || previsaoFim === 'Sem Consumo' || previsaoFim === '-') {
+      return '-';
+    }
+
+    try {
+      // Converte a data de dd/MM/yyyy para Date
+      const [dia, mes, ano] = previsaoFim.split('/').map(Number);
+      const dataPrevFim = new Date(ano, mes - 1, dia);
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      
+      // Calcula diferença em dias
+      const diffTime = dataPrevFim.getTime() - hoje.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      return `${diffDays}`;
+    } catch (error) {
+      return '-';
+    }
+  };
+
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '-';
     // A data já vem formatada do backend (formato dd/MM/yyyy)
@@ -491,6 +514,9 @@ const ItemsAnalysisPage = () => {
                   Previsão Fim
                 </th>
                 <th className="px-0.5 py-1 text-center font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
+                  Dias Cobertura
+                </th>
+                <th className="px-0.5 py-1 text-center font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
                   Quantidade
                 </th>
               </tr>
@@ -501,7 +527,7 @@ const ItemsAnalysisPage = () => {
             >
               {filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={15} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={16} className="px-6 py-12 text-center text-gray-500">
                     <Package className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                     <p>Nenhum item encontrado</p>
                   </td>
@@ -574,6 +600,17 @@ const ItemsAnalysisPage = () => {
                     </td>
                     <td className="px-0.5 py-0.5 text-center text-gray-700 font-medium" style={{ fontSize: '0.6rem' }}>
                       {item.previsao_fim_estoque || '-'}
+                    </td>
+                    <td className="px-0.5 py-0.5 text-center font-semibold" style={{ fontSize: '0.6rem' }}>
+                      <span className={`${
+                        calcularDiasCobertura(item.previsao_fim_estoque) !== '-' && parseInt(calcularDiasCobertura(item.previsao_fim_estoque)) <= 30
+                          ? 'text-red-600'
+                          : calcularDiasCobertura(item.previsao_fim_estoque) !== '-' && parseInt(calcularDiasCobertura(item.previsao_fim_estoque)) <= 60
+                          ? 'text-orange-600'
+                          : 'text-gray-700'
+                      }`}>
+                        {calcularDiasCobertura(item.previsao_fim_estoque)}
+                      </span>
                     </td>
                     <td className="px-0.5 py-0.5 text-center">
                       {selectedItems.has(item.id) ? (
