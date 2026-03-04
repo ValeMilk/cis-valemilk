@@ -123,8 +123,8 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res) => {
       return res.status(404).json({ message: 'Pedido não encontrado' });
     }
 
-    // Verificar status: apenas ENVIADO_FORNECEDOR
-    if (pedido.status_atual !== StatusPedido.ENVIADO_FORNECEDOR) {
+    // Verificar status: apenas ANALISE_COTACAO
+    if (pedido.status_atual !== StatusPedido.ANALISE_COTACAO) {
       return res.status(400).json({ message: 'Pedido não pode ser editado neste status' });
     }
 

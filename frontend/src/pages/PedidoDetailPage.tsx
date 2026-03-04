@@ -126,8 +126,8 @@ const PedidoDetailPage = () => {
                          user.perfil === PerfilEnum.DIRETORIA || 
                          user.perfil === PerfilEnum.ADMIN;
     
-    // Apenas status ENVIADO_FORNECEDOR pode ser editado
-    const canEditByStatus = pedido.status_atual === StatusPedido.ENVIADO_FORNECEDOR;
+    // Apenas status ANALISE_COTACAO pode ser editado
+    const canEditByStatus = pedido.status_atual === StatusPedido.ANALISE_COTACAO;
     
     return canEditByRole && canEditByStatus;
   };
