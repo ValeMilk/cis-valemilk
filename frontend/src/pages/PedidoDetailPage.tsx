@@ -539,13 +539,7 @@ const PedidoDetailPage = () => {
                 </tbody>
               </table>
             </div>
-            
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
-              <p className="text-sm text-blue-800">
-                <strong>💡 Importante:</strong> Esta análise mostra o contexto em que o pedido foi criado, 
-                permitindo entender a necessidade e urgência de cada item no momento da solicitação.
-              </p>
-            </div>
+
           </div>
 
           {/* Informações Adicionais na Tela */}
