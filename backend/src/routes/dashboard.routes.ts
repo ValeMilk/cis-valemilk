@@ -65,7 +65,7 @@ router.get('/', authMiddleware, async (req, res) => {
     const pedidosRecentes = await Pedido.find()
       .sort({ data_criacao: -1 })
       .limit(10)
-      .select ('numero fornecedor status_atual valor_total data_criacao');
+      .select ('numero fornecedor status_atual valor_total data_criacao data_prevista_entrega');
 
     res.json({
       total_pedidos: totalPedidos,
