@@ -85,12 +85,49 @@ export default function DashboardPage() {
             {data.pedidos_recentes
               .filter(pedido => pedido.status_atual !== StatusPedido.APROVADO_DIRETORIA && pedido.status_atual !== StatusPedido.CANCELADO)
               .slice(0, 5)
-              .map((pedido) => (
+              .map((pedido) => {
+                // Calcular dias restantes até a entrega
+                let diasRestantes: number | null = null;
+                let dataFormatada = '';
+                if (pedido.data_prevista_entrega) {
+                  const hoje = new Date();
+                  hoje.setHours(0, 0, 0, 0);
+                  const dataEntrega = new Date(pedido.data_prevista_entrega);
+                  dataEntrega.setHours(0, 0, 0, 0);
+                  const diffTime = dataEntrega.getTime() - hoje.getTime();
+                  diasRestantes = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                  dataFormatada = dataEntrega.toLocaleDateString('pt-BR');
+                }
+
+                return (
                 <div key={pedido._id} className="border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-4">
-                    <div>
+                    <div className="flex-1">
                       <h3 className="font-semibold text-gray-900">{pedido.numero}</h3>
                       <p className="text-sm text-gray-600">{pedido.fornecedor}</p>
+                      {pedido.data_prevista_entrega && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="text-xs text-gray-600">
+                            📅 Entrega prevista: <strong>{dataFormatada}</strong>
+                          </span>
+                          {diasRestantes !== null && (
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
+                              diasRestantes < 0 
+                                ? 'bg-red-100 text-red-700' 
+                                : diasRestantes <= 3 
+                                ? 'bg-orange-100 text-orange-700' 
+                                : 'bg-green-100 text-green-700'
+                            }`}>
+                              {diasRestantes < 0 
+                                ? `Atrasado ${Math.abs(diasRestantes)} dia${Math.abs(diasRestantes) !== 1 ? 's' : ''}` 
+                                : diasRestantes === 0 
+                                ? 'Entrega hoje!' 
+                                : `Faltam ${diasRestantes} dia${diasRestantes !== 1 ? 's' : ''}`
+                              }
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <button
                       onClick={() => navigate(`/pedidos/${pedido._id}`)}
@@ -102,7 +139,7 @@ export default function DashboardPage() {
                   </div>
                   <StatusStepper currentStatus={pedido.status_atual} />
                 </div>
-              ))}
+              )})}
           </div>
         </div>
       )}
