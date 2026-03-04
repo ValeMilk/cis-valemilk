@@ -239,14 +239,20 @@ router.post('/:id/em-rota', authMiddleware, requireRole(PerfilEnum.COMPRADOR, Pe
       return res.status(400).json({ message: 'Status inválido para esta ação' });
     }
 
+    // Validar se a data de entrega foi fornecida
+    if (!req.body.data_prevista_entrega) {
+      return res.status(400).json({ message: 'Data prevista de entrega é obrigatória' });
+    }
+
     const user = await User.findById(req.user!.id);
     pedido.status_atual = StatusPedido.EM_ROTA;
+    pedido.data_prevista_entrega = new Date(req.body.data_prevista_entrega);
     pedido.historico_status.push({
       status: StatusPedido.EM_ROTA,
       usuario_id: user!._id,
       usuario_nome: user!.nome,
       data: new Date(),
-      observacao: req.body.observacao
+      observacao: req.body.observacao || `Data de entrega prevista: ${new Date(req.body.data_prevista_entrega).toLocaleDateString('pt-BR')}`
     });
 
     await pedido.save();

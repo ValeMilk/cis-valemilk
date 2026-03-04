@@ -18,6 +18,10 @@ const PedidoDetailPage = () => {
   const [saving, setSaving] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   
+  // Estados para modal de data de entrega
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [dataEntregaPrevista, setDataEntregaPrevista] = useState('');
+  
   // Estados para edição
   const [fornecedorId, setFornecedorId] = useState('');
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
@@ -177,6 +181,12 @@ const PedidoDetailPage = () => {
   const handleAvancarStatus = async () => {
     if (!pedido) return;
 
+    // Se está em AGUARDANDO_FATURAMENTO, precisa capturar a data de entrega
+    if (pedido.status_atual === StatusPedido.AGUARDANDO_FATURAMENTO) {
+      setShowDateModal(true);
+      return;
+    }
+
     // Mapeamento de status atual para próxima ação
     const statusActions: Record<StatusPedido, { endpoint: string; message: string }> = {
       [StatusPedido.RASCUNHO]: { endpoint: '', message: '' },
@@ -210,6 +220,26 @@ const PedidoDetailPage = () => {
     try {
       await api.post(`/pedidos/${id}/${action.endpoint}`);
       alert(action.message);
+      fetchPedido();
+    } catch (error: any) {
+      console.error('Erro ao atualizar status:', error);
+      alert(error.response?.data?.message || 'Erro ao atualizar status');
+    }
+  };
+
+  const handleConfirmarDataEntrega = async () => {
+    if (!dataEntregaPrevista) {
+      alert('Por favor, informe a data de entrega prevista');
+      return;
+    }
+
+    try {
+      await api.post(`/pedidos/${id}/em-rota`, {
+        data_prevista_entrega: dataEntregaPrevista
+      });
+      alert('Status atualizado para Em Rota!');
+      setShowDateModal(false);
+      setDataEntregaPrevista('');
       fetchPedido();
     } catch (error: any) {
       console.error('Erro ao atualizar status:', error);
@@ -577,6 +607,14 @@ const PedidoDetailPage = () => {
                   {formatDate(pedido.data_criacao)}
                 </span>
               </div>
+              {pedido.data_prevista_entrega && (
+                <div>
+                  <span className="text-gray-600">Data de Entrega Prevista:</span>
+                  <span className="ml-2 font-medium text-green-700">
+                    {formatDate(pedido.data_prevista_entrega)}
+                  </span>
+                </div>
+              )}
               <div>
                 <span className="text-gray-600">Total de Itens:</span>
                 <span className="ml-2 font-medium text-gray-900">
@@ -613,6 +651,44 @@ const PedidoDetailPage = () => {
             </div>
           )}
         </>
+      )}
+
+      {/* Modal para capturar data de entrega */}
+      {showDateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Informar Data de Entrega
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Digite a data de entrega prevista informada pelo fornecedor:
+            </p>
+            <input
+              type="date"
+              value={dataEntregaPrevista}
+              onChange={(e) => setDataEntregaPrevista(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4"
+              min={new Date().toISOString().split('T')[0]}
+            />
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowDateModal(false);
+                  setDataEntregaPrevista('');
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmarDataEntrega}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
