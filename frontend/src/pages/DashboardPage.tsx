@@ -142,7 +142,8 @@ export default function DashboardPage() {
                     dataEntregaPrevista={pedido.data_prevista_entrega}
                   />
                 </div>
-              ))}
+              );
+            })}
           </div>
         </div>
       )}
