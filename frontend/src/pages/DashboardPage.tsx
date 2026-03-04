@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { DashboardData } from '../types';
-import { TrendingUp, Package, Clock, DollarSign } from 'lucide-react';
+import { DashboardData, StatusPedido } from '../types';
+import { TrendingUp, Package, Clock, DollarSign, Eye } from 'lucide-react';
+import StatusStepper from '../components/StatusStepper';
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -73,6 +76,36 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Pedidos em Progresso com Acompanhamento */}
+      {data?.pedidos_recentes && data.pedidos_recentes.length > 0 && (
+        <div className="bg-white rounded-lg shadow p-6 mb-8">
+          <h2 className="text-xl font-bold mb-6">Acompanhamento de Pedidos</h2>
+          <div className="space-y-8">
+            {data.pedidos_recentes
+              .filter(pedido => pedido.status_atual !== StatusPedido.APROVADO_DIRETORIA && pedido.status_atual !== StatusPedido.CANCELADO)
+              .slice(0, 5)
+              .map((pedido) => (
+                <div key={pedido._id} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{pedido.numero}</h3>
+                      <p className="text-sm text-gray-600">{pedido.fornecedor}</p>
+                    </div>
+                    <button
+                      onClick={() => navigate(`/pedidos/${pedido._id}`)}
+                      className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm"
+                    >
+                      <Eye className="w-4 h-4" />
+                      Ver Detalhes
+                    </button>
+                  </div>
+                  <StatusStepper currentStatus={pedido.status_atual} />
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-xl font-bold mb-4">Pedidos Recentes</h2>
