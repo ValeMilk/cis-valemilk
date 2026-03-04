@@ -26,58 +26,62 @@ const StatusStepper: React.FC<StatusStepperProps> = ({ currentStatus }) => {
   };
 
   return (
-    <div className="py-6">
-      <div className="flex items-center justify-between relative">
-        {/* Linha de conexão */}
-        <div className="absolute top-6 left-0 right-0 h-1 bg-gray-200 -z-10">
-          <div
-            className="h-full bg-blue-500 transition-all duration-500"
-            style={{
-              width: currentStepIndex >= 0 
-                ? `${(currentStepIndex / (steps.length - 1)) * 100}%` 
-                : '0%'
-            }}
-          />
-        </div>
-
-        {/* Steps */}
+    <div className="py-8">
+      {/* Labels no topo */}
+      <div className="flex items-center justify-between mb-6">
         {steps.map((step, index) => (
           <div key={step.status} className="flex flex-col items-center flex-1">
-            {/* Círculo do step */}
-            <div
-              className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
-                isStepCompleted(index)
-                  ? 'bg-blue-500 border-blue-500 text-white'
-                  : 'bg-white border-gray-300 text-gray-400'
+            <p
+              className={`text-sm font-medium text-center ${
+                isStepCompleted(index) ? 'text-blue-600' : 'text-gray-500'
               }`}
             >
-              {isStepCompleted(index) && (
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={3}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              )}
-            </div>
+              {step.label}
+            </p>
+          </div>
+        ))}
+      </div>
 
-            {/* Label do step */}
-            <div className="mt-3 text-center">
-              <p
-                className={`text-sm font-medium ${
-                  isStepCompleted(index) ? 'text-blue-600' : 'text-gray-500'
-                }`}
+      {/* Linha e círculos */}
+      <div className="flex items-center justify-between relative px-8">
+        {/* Linha de fundo (cinza) - completa */}
+        <div className="absolute top-1/2 left-0 right-0 h-2 bg-gray-300 -translate-y-1/2 rounded-full" />
+        
+        {/* Linha de progresso (azul) */}
+        <div 
+          className="absolute top-1/2 left-0 h-2 bg-blue-500 -translate-y-1/2 rounded-full transition-all duration-500"
+          style={{
+            width: currentStepIndex >= 0 
+              ? `${(currentStepIndex / (steps.length - 1)) * 100}%` 
+              : '0%'
+          }}
+        />
+
+        {/* Círculos dos steps */}
+        {steps.map((step, index) => (
+          <div
+            key={step.status}
+            className={`relative w-14 h-14 rounded-full flex items-center justify-center border-4 transition-all duration-300 z-10 ${
+              isStepCompleted(index)
+                ? 'bg-blue-500 border-blue-500 text-white shadow-lg'
+                : 'bg-white border-gray-300 text-gray-400'
+            }`}
+          >
+            {isStepCompleted(index) && (
+              <svg
+                className="w-7 h-7"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                {step.label}
-              </p>
-            </div>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={3}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            )}
           </div>
         ))}
       </div>
