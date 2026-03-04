@@ -49,10 +49,26 @@ router.post('/', authMiddleware, requireRole(PerfilEnum.COMPRADOR, PerfilEnum.AD
     }
 
     // Generate numero and idCompra
-    const count = await Pedido.countDocuments();
     const ano = new Date().getFullYear();
     const mes = String(new Date().getMonth() + 1).padStart(2, '0');
-    const numero = `OC-${ano}-${mes}-${String(count + 1).padStart(3, '0')}`;
+    
+    // Get last pedido of current month to generate next number
+    const lastPedido = await Pedido.findOne({
+      numero: new RegExp(`^OC-${ano}-${mes}-`)
+    }).sort({ numero: -1 });
+
+    let proximoNumero = 1;
+    if (lastPedido && lastPedido.numero) {
+      const match = lastPedido.numero.match(/OC-\d{4}-\d{2}-(\d{3})$/);
+      if (match) {
+        proximoNumero = parseInt(match[1]) + 1;
+      }
+    }
+
+    const numero = `OC-${ano}-${mes}-${String(proximoNumero).padStart(3, '0')}`;
+    
+    // Get total count for idCompra
+    const count = await Pedido.countDocuments();
     const idCompra = `PC${ano}${String(count + 1).padStart(4, '0')}`;
 
     const pedido = await Pedido.create({
