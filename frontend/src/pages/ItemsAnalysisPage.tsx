@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, Search, Filter, ShoppingCart } from 'lucide-react';
+import { Package, Search, Filter, ShoppingCart, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import api from '../services/api';
 import { Item } from '../types';
 
@@ -17,6 +17,8 @@ const ItemsAnalysisPage = () => {
   const [prevFimDate, setPrevFimDate] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
+  const [sortColumn, setSortColumn] = useState<string>('');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     fetchItems();
@@ -25,7 +27,7 @@ const ItemsAnalysisPage = () => {
   useEffect(() => {
     console.log('🔄 useEffect disparado - mudança em filtros detectada');
     filterItems();
-  }, [items, searchTerm, tipoFilter, fornecedorFilter, classeFilter, prevFimFilter, prevFimDate]);
+  }, [items, searchTerm, tipoFilter, fornecedorFilter, classeFilter, prevFimFilter, prevFimDate, sortColumn, sortDirection]);
 
   const fetchItems = async () => {
     try {
@@ -146,7 +148,147 @@ const ItemsAnalysisPage = () => {
     }
 
     console.log('🎯 Total filtrado final:', filtered.length);
+    
+    // Aplicar ordenação se houver coluna selecionada
+    if (sortColumn) {
+      filtered = sortItems(filtered, sortColumn, sortDirection);
+    }
+    
     setFilteredItems(filtered);
+  };
+
+  const sortItems = (itemsToSort: Item[], column: string, direction: 'asc' | 'desc'): Item[] => {
+    const sorted = [...itemsToSort].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      // Mapear coluna para propriedade do item
+      switch (column) {
+        case 'codigo':
+          aValue = a.codigo_item;
+          bValue = b.codigo_item;
+          break;
+        case 'tipo':
+          aValue = a.tipo;
+          bValue = b.tipo;
+          break;
+        case 'descricao':
+          aValue = a.descricao;
+          bValue = b.descricao;
+          break;
+        case 'classe':
+          aValue = a.classe_abc;
+          bValue = b.classe_abc;
+          break;
+        case 'dep_aberto':
+          aValue = a.saldo_dep_aberto || 0;
+          bValue = b.saldo_dep_aberto || 0;
+          break;
+        case 'dep_interno':
+          aValue = a.saldo_dep_fechado_interno || 0;
+          bValue = b.saldo_dep_fechado_interno || 0;
+          break;
+        case 'dep_externo':
+          aValue = a.saldo_dep_fechado_externo || 0;
+          bValue = b.saldo_dep_fechado_externo || 0;
+          break;
+        case 'saldo_total':
+          aValue = (a.saldo_dep_aberto || 0) + (a.saldo_dep_fechado_interno || 0) + (a.saldo_dep_fechado_externo || 0);
+          bValue = (b.saldo_dep_aberto || 0) + (b.saldo_dep_fechado_interno || 0) + (b.saldo_dep_fechado_externo || 0);
+          break;
+        case 'giro_mensal':
+          aValue = a.giro_mensal || 0;
+          bValue = b.giro_mensal || 0;
+          break;
+        case 'med_giro_trimestre':
+          aValue = a.media_giro_trimestre || 0;
+          bValue = b.media_giro_trimestre || 0;
+          break;
+        case 'vlr_ultima_entrada':
+          aValue = a.valorUltimaEntrada || 0;
+          bValue = b.valorUltimaEntrada || 0;
+          break;
+        case 'dt_ultima_entrada':
+          // Converter data dd/MM/yyyy para timestamp para ordenação
+          aValue = parseDateToTimestamp(a.data_ultima_entrada);
+          bValue = parseDateToTimestamp(b.data_ultima_entrada);
+          break;
+        case 'previsao_fim':
+          // Converter data dd/MM/yyyy para timestamp para ordenação
+          aValue = parseDateToTimestamp(a.previsao_fim_estoque);
+          bValue = parseDateToTimestamp(b.previsao_fim_estoque);
+          break;
+        case 'dias_cobertura':
+          // Calcular dias de cobertura numericamente
+          aValue = calcularDiasCoberturaNumerico(a.previsao_fim_estoque);
+          bValue = calcularDiasCoberturaNumerico(b.previsao_fim_estoque);
+          break;
+        default:
+          return 0;
+      }
+
+      // Comparação
+      if (aValue === null || aValue === undefined || aValue === '' || aValue === -Infinity) return 1;
+      if (bValue === null || bValue === undefined || bValue === '' || bValue === -Infinity) return -1;
+      
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return direction === 'asc' 
+          ? aValue.localeCompare(bValue, 'pt-BR')
+          : bValue.localeCompare(aValue, 'pt-BR');
+      }
+      
+      return direction === 'asc' ? aValue - bValue : bValue - aValue;
+    });
+
+    return sorted;
+  };
+
+  const parseDateToTimestamp = (dateStr?: string): number => {
+    if (!dateStr || dateStr === '-' || dateStr === 'Sem Estoque' || dateStr === 'Sem Consumo') {
+      return -Infinity; // Coloca no final
+    }
+    try {
+      const [dia, mes, ano] = dateStr.split('/').map(Number);
+      return new Date(ano, mes - 1, dia).getTime();
+    } catch {
+      return -Infinity;
+    }
+  };
+
+  const calcularDiasCoberturaNumerico = (previsaoFim: string): number => {
+    if (!previsaoFim || previsaoFim === 'Sem Estoque' || previsaoFim === 'Sem Consumo' || previsaoFim === '-') {
+      return -Infinity; // Coloca no final
+    }
+    try {
+      const [dia, mes, ano] = previsaoFim.split('/').map(Number);
+      const dataPrevFim = new Date(ano, mes - 1, dia);
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      const diffTime = dataPrevFim.getTime() - hoje.getTime();
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    } catch {
+      return -Infinity;
+    }
+  };
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      // Se já está ordenando por essa coluna, inverte a direção
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Nova coluna, começa com ascendente
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const renderSortIcon = (column: string) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown size={12} className="inline ml-1 opacity-30" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp size={12} className="inline ml-1 text-blue-600" />
+      : <ArrowDown size={12} className="inline ml-1 text-blue-600" />;
   };
 
   // Get unique tipos and fornecedores for filters
@@ -474,47 +616,103 @@ const ItemsAnalysisPage = () => {
                     className="rounded border-gray-300"
                   />
                 </th>
-                <th className="px-0.5 py-1 text-left font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Cód
+                <th 
+                  className="px-0.5 py-1 text-left font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100" 
+                  style={{ fontSize: '0.6rem' }}
+                  onClick={() => handleSort('codigo')}
+                >
+                  Cód{renderSortIcon('codigo')}
                 </th>
-                <th className="px-0.5 py-1 text-left font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Tipo
+                <th 
+                  className="px-0.5 py-1 text-left font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100" 
+                  style={{ fontSize: '0.6rem' }}
+                  onClick={() => handleSort('tipo')}
+                >
+                  Tipo{renderSortIcon('tipo')}
                 </th>
-                <th className="px-1 py-1 text-left font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Descrição
+                <th 
+                  className="px-1 py-1 text-left font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100" 
+                  style={{ fontSize: '0.6rem' }}
+                  onClick={() => handleSort('descricao')}
+                >
+                  Descrição{renderSortIcon('descricao')}
                 </th>
-                <th className="px-0.5 py-1 text-center font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Cl
+                <th 
+                  className="px-0.5 py-1 text-center font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100" 
+                  style={{ fontSize: '0.6rem' }}
+                  onClick={() => handleSort('classe')}
+                >
+                  Cl{renderSortIcon('classe')}
                 </th>
-                <th className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Dep.Aberto
+                <th 
+                  className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100" 
+                  style={{ fontSize: '0.6rem' }}
+                  onClick={() => handleSort('dep_aberto')}
+                >
+                  Dep.Aberto{renderSortIcon('dep_aberto')}
                 </th>
-                <th className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Dep.Interno
+                <th 
+                  className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100" 
+                  style={{ fontSize: '0.6rem' }}
+                  onClick={() => handleSort('dep_interno')}
+                >
+                  Dep.Interno{renderSortIcon('dep_interno')}
                 </th>
-                <th className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Dep.Externo
+                <th 
+                  className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100" 
+                  style={{ fontSize: '0.6rem' }}
+                  onClick={() => handleSort('dep_externo')}
+                >
+                  Dep.Externo{renderSortIcon('dep_externo')}
                 </th>
-                <th className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Saldo Total
+                <th 
+                  className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100" 
+                  style={{ fontSize: '0.6rem' }}
+                  onClick={() => handleSort('saldo_total')}
+                >
+                  Saldo Total{renderSortIcon('saldo_total')}
                 </th>
-                <th className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Giro Mensal
+                <th 
+                  className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100" 
+                  style={{ fontSize: '0.6rem' }}
+                  onClick={() => handleSort('giro_mensal')}
+                >
+                  Giro Mensal{renderSortIcon('giro_mensal')}
                 </th>
-                <th className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Méd Giro Trimestre
+                <th 
+                  className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100" 
+                  style={{ fontSize: '0.6rem' }}
+                  onClick={() => handleSort('med_giro_trimestre')}
+                >
+                  Méd Giro Trimestre{renderSortIcon('med_giro_trimestre')}
                 </th>
-                <th className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Vlr Ultima Entrada
+                <th 
+                  className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100" 
+                  style={{ fontSize: '0.6rem' }}
+                  onClick={() => handleSort('vlr_ultima_entrada')}
+                >
+                  Vlr Ultima Entrada{renderSortIcon('vlr_ultima_entrada')}
                 </th>
-                <th className="px-0.5 py-1 text-center font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Dt Ultima Entrada
+                <th 
+                  className="px-0.5 py-1 text-center font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100" 
+                  style={{ fontSize: '0.6rem' }}
+                  onClick={() => handleSort('dt_ultima_entrada')}
+                >
+                  Dt Ultima Entrada{renderSortIcon('dt_ultima_entrada')}
                 </th>
-                <th className="px-0.5 py-1 text-center font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Previsão Fim
+                <th 
+                  className="px-0.5 py-1 text-center font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100" 
+                  style={{ fontSize: '0.6rem' }}
+                  onClick={() => handleSort('previsao_fim')}
+                >
+                  Previsão Fim{renderSortIcon('previsao_fim')}
                 </th>
-                <th className="px-0.5 py-1 text-center font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
-                  Dias Cobertura
+                <th 
+                  className="px-0.5 py-1 text-center font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100" 
+                  style={{ fontSize: '0.6rem' }}
+                  onClick={() => handleSort('dias_cobertura')}
+                >
+                  Dias Cobertura{renderSortIcon('dias_cobertura')}
                 </th>
                 <th className="px-0.5 py-1 text-center font-semibold text-gray-700 uppercase" style={{ fontSize: '0.6rem' }}>
                   Quantidade
