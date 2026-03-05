@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth';
-import { executeERPQuery, getItemsQuery, ERPItem } from '../services/erp.service';
+import { executeERPQuery, getItemsQuery, getHistoricalItemsQuery, ERPItem } from '../services/erp.service';
 import { Pedido } from '../models/Pedido';
 import { StatusPedido } from '../types/enums';
 
@@ -125,6 +125,50 @@ const mockItems: Item[] = [
     previsao_fim_estoque: '10/03/2026'
   }
 ];
+
+// Get historical analysis items (detailed view for Diretoria/Comprador)
+router.get('/historical', authMiddleware, async (req, res) => {
+  try {
+    const { search, tipo, classe_abc } = req.query;
+    
+    let items: Item[];
+    
+    // Tentar buscar do ERP
+    try {
+      const erpItems = await executeERPQuery<ERPItem>(getHistoricalItemsQuery());
+      items = erpItems.map(mapERPItemToItem);
+      console.log(`✅ ${items.length} itens históricos carregados do ERP`);
+    } catch (erpError) {
+      console.warn('⚠️  ERP indisponível, usando dados mock:', erpError);
+      items = mockItems;
+    }
+    
+    // Aplicar filtros
+    let filtered = [...items];
+    
+    if (search) {
+      const searchLower = (search as string).toLowerCase();
+      filtered = filtered.filter(item => 
+        item.descricao.toLowerCase().includes(searchLower) ||
+        item.codigo_item.toLowerCase().includes(searchLower) ||
+        item.fornecedor.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    if (tipo) {
+      filtered = filtered.filter(item => item.tipo === tipo);
+    }
+    
+    if (classe_abc) {
+      filtered = filtered.filter(item => item.classe_abc === classe_abc);
+    }
+    
+    res.json(filtered);
+  } catch (error) {
+    console.error('❌ Erro ao buscar itens históricos:', error);
+    res.status(500).json({ message: 'Erro ao buscar itens históricos' });
+  }
+});
 
 // Get all items
 router.get('/', authMiddleware, async (req, res) => {
