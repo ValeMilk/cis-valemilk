@@ -704,14 +704,14 @@ const ItemsAnalysisPage = () => {
                   style={{ fontSize: '0.6rem' }}
                   onClick={() => handleSort('dep_interno')}
                 >
-                  Dep.Interno{renderSortIcon('dep_interno')}
+                  Dep.Externo{renderSortIcon('dep_interno')}
                 </th>
                 <th 
                   className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100" 
                   style={{ fontSize: '0.6rem' }}
                   onClick={() => handleSort('dep_externo')}
                 >
-                  Dep.Externo{renderSortIcon('dep_externo')}
+                  Dep.Interno{renderSortIcon('dep_externo')}
                 </th>
                 <th 
                   className="px-0.5 py-1 text-right font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100" 
