@@ -253,7 +253,7 @@ export const getHistoricalItemsQuery = (): string => {
             M01.M01_PRECOU,
             
             ROW_NUMBER() OVER (
-                PARTITION BY M01.M01_ID_E02, M00.M00_ID_A00 
+                PARTITION BY M01.M01_ID_E02
                 ORDER BY M00.M00_ENTSAI DESC, M00.M00_ID DESC
             ) AS rn
         FROM M00
