@@ -10,6 +10,7 @@ import CreatePedidoPage from './pages/CreatePedidoPage';
 import FornecedoresPage from './pages/FornecedoresPage';
 import UsersPage from './pages/UsersPage';
 import InventarioPage from './pages/InventarioPage';
+import CentralInventarioPage from './pages/CentralInventarioPage';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -112,6 +113,16 @@ function App() {
           <ProtectedRoute>
             <Layout>
               <InventarioPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/central-inventario"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <CentralInventarioPage />
             </Layout>
           </ProtectedRoute>
         }

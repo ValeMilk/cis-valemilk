@@ -193,6 +193,60 @@ router.put('/:inventarioId/finalizar', authMiddleware, async (req, res) => {
   }
 });
 
+// GET - Listar inventários finalizados (Central de Inventário)
+router.get('/finalizados', authMiddleware, async (req, res) => {
+  try {
+    const { dataInicio, dataFim } = req.query;
+    const filtro: any = { status: 'finalizado' };
+
+    if (dataInicio || dataFim) {
+      filtro.data_snapshot = {};
+      if (dataInicio) filtro.data_snapshot.$gte = new Date(dataInicio as string);
+      if (dataFim) {
+        const fim = new Date(dataFim as string);
+        fim.setHours(23, 59, 59, 999);
+        filtro.data_snapshot.$lte = fim;
+      }
+    }
+
+    const inventarios = await Inventario.find(filtro)
+      .select('data_snapshot criado_por_nome itens')
+      .sort({ data_snapshot: -1 });
+
+    const resumo = inventarios.map(inv => ({
+      _id: inv._id,
+      data_snapshot: inv.data_snapshot,
+      criado_por_nome: inv.criado_por_nome,
+      total_itens: inv.itens.length,
+      itens_contados: inv.itens.filter(i =>
+        (i as any).contagem_aberto !== null ||
+        (i as any).contagem_fechado_ext !== null ||
+        (i as any).contagem_fechado_int !== null
+      ).length
+    }));
+
+    res.json(resumo);
+  } catch (error) {
+    console.error('❌ Erro ao listar finalizados:', error);
+    res.status(500).json({ message: 'Erro ao listar inventários finalizados' });
+  }
+});
+
+// GET - Detalhes de um inventário finalizado
+router.get('/:inventarioId', authMiddleware, async (req, res) => {
+  try {
+    const { inventarioId } = req.params;
+    const inventario = await Inventario.findById(inventarioId);
+    if (!inventario) {
+      return res.status(404).json({ message: 'Inventário não encontrado' });
+    }
+    res.json(inventario);
+  } catch (error) {
+    console.error('❌ Erro ao buscar inventário:', error);
+    res.status(500).json({ message: 'Erro ao buscar inventário' });
+  }
+});
+
 // DELETE - Descartar inventário em andamento (reiniciar)
 router.delete('/:inventarioId', authMiddleware, async (req, res) => {
   try {

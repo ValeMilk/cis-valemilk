@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, LayoutDashboard, ShoppingCart, Package, Building2, Users, TrendingUp, ClipboardList } from 'lucide-react';
+import { LogOut, LayoutDashboard, ShoppingCart, Package, Building2, Users, TrendingUp, ClipboardList, Archive } from 'lucide-react';
 import { PerfilEnum } from '../types';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -67,6 +67,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <span>Inventário</span>
                 </Link>
               )}
+              <Link
+                to="/central-inventario"
+                className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
+              >
+                <Archive size={20} />
+                <span>Central Inventário</span>
+              </Link>
               {user?.perfil === PerfilEnum.ADMIN && (
                 <Link
                   to="/usuarios"
