@@ -37,6 +37,8 @@ const InventarioPage = () => {
   const [tipoFilter, setTipoFilter] = useState('');
   const [depositoFilter, setDepositoFilter] = useState('aberto');
   const [contagemFilter, setContagemFilter] = useState<'todos' | 'pendentes' | 'contados'>('todos');
+  const [abcFilter, setAbcFilter] = useState<'' | 'A' | 'B' | 'C'>('');
+  const [abcMap, setAbcMap] = useState<Record<string, 'A' | 'B' | 'C'>>({});
   const [savingItem, setSavingItem] = useState<string | null>(null);
   const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -50,7 +52,7 @@ const InventarioPage = () => {
       return;
     }
     filterItems();
-  }, [inventario, searchTerm, tipoFilter, depositoFilter, contagemFilter]);
+  }, [inventario, searchTerm, tipoFilter, depositoFilter, contagemFilter, abcFilter]);
 
   const fetchInventario = async () => {
     try {
@@ -89,6 +91,29 @@ const InventarioPage = () => {
     return 'contagem_fechado_int';
   };
 
+  const getSaldo = (item: InventarioItem): number => {
+    if (depositoFilter === 'aberto') return item.dep_aberto_real;
+    if (depositoFilter === 'fechado_ext') return item.dep_fechado_externo;
+    return item.dep_fechado_interno;
+  };
+
+  const calcularABC = (itens: InventarioItem[]): Record<string, 'A' | 'B' | 'C'> => {
+    const comSaldo = itens.map(item => ({ codigo: item.codigo_item, saldo: Math.abs(getSaldo(item)) }));
+    comSaldo.sort((a, b) => b.saldo - a.saldo);
+    const total = comSaldo.reduce((sum, i) => sum + i.saldo, 0);
+    if (total === 0) return {};
+    let acumulado = 0;
+    const mapa: Record<string, 'A' | 'B' | 'C'> = {};
+    for (const item of comSaldo) {
+      acumulado += item.saldo;
+      const pct = (acumulado / total) * 100;
+      if (pct <= 80) mapa[item.codigo] = 'A';
+      else if (pct <= 95) mapa[item.codigo] = 'B';
+      else mapa[item.codigo] = 'C';
+    }
+    return mapa;
+  };
+
   const filterItems = () => {
     if (!inventario) return;
     let filtered = [...inventario.itens];
@@ -113,6 +138,14 @@ const InventarioPage = () => {
       filtered = filtered.filter(item => item.dep_fechado_externo > 0);
     } else if (depositoFilter === 'fechado_int') {
       filtered = filtered.filter(item => item.dep_fechado_interno > 0);
+    }
+
+    // Calcular ABC antes de aplicar filtro ABC
+    const novoAbcMap = calcularABC(filtered);
+    setAbcMap(novoAbcMap);
+
+    if (abcFilter) {
+      filtered = filtered.filter(item => novoAbcMap[item.codigo_item] === abcFilter);
     }
 
     if (contagemFilter === 'pendentes') {
@@ -390,9 +423,18 @@ const InventarioPage = () => {
                 <option value="pendentes">Pendentes</option>
                 <option value="contados">Contados</option>
               </select>
+              <select
+                value={abcFilter}
+                onChange={(e) => setAbcFilter(e.target.value as any)}
+                className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Curva ABC</option>
+                <option value="A">A (80%)</option>
+                <option value="B">B (15%)</option>
+                <option value="C">C (5%)</option>
+              </select>
             </div>
           </div>
-
           {/* Tabela */}
           <div className="bg-white rounded-lg shadow overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -400,6 +442,7 @@ const InventarioPage = () => {
                 <tr>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descrição</th>
+                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">ABC</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">UM</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Tipo</th>
                   <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -417,7 +460,7 @@ const InventarioPage = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredItems.length === 0 ? (
                   <tr>
-                    <td colSpan={depositoFilter === 'aberto' ? 8 : 6} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={depositoFilter === 'aberto' ? 9 : 7} className="px-4 py-8 text-center text-gray-500">
                       Nenhum item encontrado
                     </td>
                   </tr>
@@ -440,6 +483,17 @@ const InventarioPage = () => {
                         </td>
                         <td className="px-3 py-2 text-sm text-gray-900 max-w-xs truncate" title={item.descricao}>
                           {item.descricao}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-center hidden sm:table-cell">
+                          {abcMap[item.codigo_item] && (
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                              abcMap[item.codigo_item] === 'A' ? 'bg-red-100 text-red-700' :
+                              abcMap[item.codigo_item] === 'B' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-green-100 text-green-700'
+                            }`}>
+                              {abcMap[item.codigo_item]}
+                            </span>
+                          )}
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600 hidden sm:table-cell">
                           {item.unidade_medida}
