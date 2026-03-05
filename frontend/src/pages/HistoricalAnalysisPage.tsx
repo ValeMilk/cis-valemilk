@@ -57,6 +57,18 @@ const HistoricalAnalysisPage = () => {
     // Sorting
     if (sortColumn) {
       filtered.sort((a, b) => {
+        // Caso especial para dias_cobertura (calculado dinamicamente)
+        if (sortColumn === 'dias_cobertura') {
+          const aDias = calcularDiasCobertura(a.previsao_fim_estoque);
+          const bDias = calcularDiasCobertura(b.previsao_fim_estoque);
+          
+          // Converter para número, tratando '-' como infinito
+          const aNum = aDias === '-' ? Infinity : parseInt(aDias);
+          const bNum = bDias === '-' ? Infinity : parseInt(bDias);
+          
+          return sortDirection === 'asc' ? aNum - bNum : bNum - aNum;
+        }
+        
         let aVal: any = a[sortColumn as keyof Item];
         let bVal: any = b[sortColumn as keyof Item];
 
@@ -119,7 +131,15 @@ const HistoricalAnalysisPage = () => {
   };
 
   const calcularDiasCobertura = (prevFimEstoque: string): string => {
-    if (!prevFimEstoque || prevFimEstoque === '-' || prevFimEstoque === 'Sem Estoque' || prevFimEstoque === 'Sem Consumo') {
+    if (!prevFimEstoque || prevFimEstoque === '-') {
+      return '-';
+    }
+    
+    if (prevFimEstoque === 'Sem Estoque') {
+      return '0';
+    }
+    
+    if (prevFimEstoque === 'Sem Consumo') {
       return '-';
     }
     
@@ -341,10 +361,11 @@ const HistoricalAnalysisPage = () => {
                   Prev. Fim Estoque{renderSortIcon('previsao_fim_estoque')}
                 </th>
                 <th 
-                  className="px-2 py-2 text-center font-semibold text-gray-700 uppercase" 
+                  className="px-2 py-2 text-center font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100" 
                   style={{ fontSize: '0.7rem' }}
+                  onClick={() => handleSort('dias_cobertura')}
                 >
-                  Dias Cobertura
+                  Dias Cobertura{renderSortIcon('dias_cobertura')}
                 </th>
               </tr>
             </thead>
