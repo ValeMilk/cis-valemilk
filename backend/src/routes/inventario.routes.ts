@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth';
 import { executeERPQuery, getInventarioQuery, ERPInventarioItem } from '../services/erp.service';
 import { Inventario, IInventarioItem } from '../models/Inventario';
-import User from '../models/User';
+import { User } from '../models/User';
 
 const router = Router();
 
