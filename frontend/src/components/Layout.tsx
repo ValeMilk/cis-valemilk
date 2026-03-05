@@ -26,34 +26,38 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <LayoutDashboard size={20} />
                 <span>Dashboard</span>
               </Link>
-              <Link
-                to="/items"
-                className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
-              >
-                <Package size={20} />
-                <span>Análise de Itens</span>
-              </Link>
-              <Link
-                to="/items/historical"
-                className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
-              >
-                <TrendingUp size={20} />
-                <span>Análise Histórica</span>
-              </Link>
-              <Link
-                to="/fornecedores"
-                className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
-              >
-                <Building2 size={20} />
-                <span>Fornecedores</span>
-              </Link>
-              <Link
-                to="/pedidos"
-                className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
-              >
-                <ShoppingCart size={20} />
-                <span>Pedidos</span>
-              </Link>
+              {user?.perfil !== PerfilEnum.RECEBIMENTO && (
+                <>
+                  <Link
+                    to="/items"
+                    className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
+                  >
+                    <Package size={20} />
+                    <span>Análise de Itens</span>
+                  </Link>
+                  <Link
+                    to="/items/historical"
+                    className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
+                  >
+                    <TrendingUp size={20} />
+                    <span>Análise Histórica</span>
+                  </Link>
+                  <Link
+                    to="/fornecedores"
+                    className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
+                  >
+                    <Building2 size={20} />
+                    <span>Fornecedores</span>
+                  </Link>
+                  <Link
+                    to="/pedidos"
+                    className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
+                  >
+                    <ShoppingCart size={20} />
+                    <span>Pedidos</span>
+                  </Link>
+                </>
+              )}
               {(user?.perfil === PerfilEnum.RECEBIMENTO || user?.perfil === PerfilEnum.ADMIN) && (
                 <Link
                   to="/inventario"
