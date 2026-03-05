@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth';
-import { executeERPQuery, getItemsQuery, getHistoricalItemsQuery, ERPItem } from '../services/erp.service';
+import { executeERPQuery, getItemsQuery, getHistoricalItemsQuery, getFornecedorItensHistoricoQuery, ERPItem, ERPFornecedorItem } from '../services/erp.service';
 import { Pedido } from '../models/Pedido';
 import { StatusPedido } from '../types/enums';
 
@@ -284,6 +284,25 @@ router.get('/with-status/all', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao buscar itens com status:', error);
     res.status(500).json({ message: 'Erro ao buscar itens' });
+  }
+});
+
+// Get fornecedor -> itens map (histórico de todos os itens que cada fornecedor já vendeu)
+router.get('/fornecedor-itens-map', authMiddleware, async (req, res) => {
+  try {
+    const rows = await executeERPQuery<ERPFornecedorItem>(getFornecedorItensHistoricoQuery());
+    // Montar mapa: fornecedor -> [codigo_item padded]
+    const mapa: Record<string, string[]> = {};
+    for (const row of rows) {
+      const fornecedor = row.Fornecedor;
+      const codigo = String(row.Cod).padStart(6, '0');
+      if (!mapa[fornecedor]) mapa[fornecedor] = [];
+      mapa[fornecedor].push(codigo);
+    }
+    res.json(mapa);
+  } catch (error) {
+    console.error('❌ Erro ao buscar mapa fornecedor-itens:', error);
+    res.json({}); // Fallback vazio (frontend usa filtro simples)
   }
 });
 

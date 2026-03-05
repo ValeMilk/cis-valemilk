@@ -19,9 +19,11 @@ const ItemsAnalysisPage = () => {
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
   const [sortColumn, setSortColumn] = useState<string>('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [fornecedorItensMap, setFornecedorItensMap] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     fetchItems();
+    fetchFornecedorItensMap();
   }, []);
 
   useEffect(() => {
@@ -39,6 +41,15 @@ const ItemsAnalysisPage = () => {
       alert('Erro ao carregar itens do ERP');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchFornecedorItensMap = async () => {
+    try {
+      const response = await api.get('/items/fornecedor-itens-map');
+      setFornecedorItensMap(response.data);
+    } catch (error) {
+      console.error('Erro ao buscar mapa fornecedor-itens:', error);
     }
   };
 
@@ -64,7 +75,13 @@ const ItemsAnalysisPage = () => {
     }
 
     if (fornecedorFilter) {
-      filtered = filtered.filter((item) => item.fornecedor === fornecedorFilter);
+      const codigosFornecedor = fornecedorItensMap[fornecedorFilter];
+      if (codigosFornecedor && codigosFornecedor.length > 0) {
+        const codigosSet = new Set(codigosFornecedor);
+        filtered = filtered.filter((item) => codigosSet.has(item.codigo_item));
+      } else {
+        filtered = filtered.filter((item) => item.fornecedor === fornecedorFilter);
+      }
       console.log('✅ Após filtro fornecedor:', filtered.length, 'Buscando:', fornecedorFilter);
     }
 
@@ -298,7 +315,10 @@ const ItemsAnalysisPage = () => {
 
   // Get unique tipos and fornecedores for filters
   const uniqueTipos = Array.from(new Set(items.map(item => item.tipo))).sort();
-  const uniqueFornecedores = Array.from(new Set(items.map(item => item.fornecedor))).sort();
+  const uniqueFornecedores = Array.from(new Set([
+    ...items.map(item => item.fornecedor),
+    ...Object.keys(fornecedorItensMap)
+  ])).sort();
 
   const toggleItemSelection = (itemId: string) => {
     const newSelected = new Set(selectedItems);

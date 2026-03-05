@@ -486,3 +486,37 @@ export interface ERPInventarioItem {
   'Dep. Fechado (Interno)': string;
   'Produções em Aberto': string;
 }
+
+// Query para buscar todos os itens que cada fornecedor já vendeu (histórico completo)
+export const getFornecedorItensHistoricoQuery = (): string => {
+  return `
+    SELECT DISTINCT
+        CASE 
+            WHEN E02.E02_TIPO = 7 THEN 'MATERIAL DE USO E CONSUMO'
+            WHEN A00.A00_FANTASIA IS NULL OR LTRIM(RTRIM(A00.A00_FANTASIA)) = '' THEN 'SEM FORNECEDOR'
+            ELSE RTRIM(UPPER(A00.A00_FANTASIA)) 
+        END AS Fornecedor,
+        CAST(M01.M01_ID_E02 AS VARCHAR) AS Cod
+    FROM dbo.M00
+    INNER JOIN dbo.M01 ON M00.M00_ID = M01.M01_ID_M00
+    INNER JOIN dbo.E02 ON E02.E02_ID = M01.M01_ID_E02
+    INNER JOIN dbo.E01 ON E01.E01_ID = E02.E02_ID_E01
+    LEFT JOIN dbo.A00 ON M00.M00_ID_A00 = A00.A00_ID
+    WHERE M00.M00_DTLANC >= '2023-09-01'
+      AND M00.M00_ID_EMP IN (80, 81, 82)
+      AND (
+          M00.M00_STATUS = 'N' 
+          OR (M00.M00_STATUS = 'I' AND E02.E02_TIPO = 7)
+      )
+      AND E02.E02_TIPO IN (1, 2, 7, 10)
+      AND E02.E02_ATIVO = 1
+      AND E01.E01_DESC <> 'Outros'
+      AND M01.M01_ID_E02 <> 1
+    ORDER BY Fornecedor, Cod;
+  `;
+};
+
+export interface ERPFornecedorItem {
+  Fornecedor: string;
+  Cod: string;
+}
