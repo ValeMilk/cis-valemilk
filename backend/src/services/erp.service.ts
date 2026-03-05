@@ -374,3 +374,115 @@ export interface ERPItem {
   'Média Giro Trimestre': string;
   'Prev. Fim Estoque': string;
 }
+
+// Query para inventário - traz saldos por depósito e produções em aberto
+export const getInventarioQuery = (): string => {
+  return `
+    WITH UltimoPorFornecedor AS (
+        SELECT
+            M00.M00_ENTSAI,
+            M01.M01_ID_E02,
+            E02.E02_DESC,
+            E02.E02_UM,
+            E02.E02_TIPO,
+            M00.M00_ID_A00 AS Id_Fornecedor, 
+            
+            CASE 
+                WHEN E02.E02_TIPO = 7 THEN 'MATERIAL DE USO E CONSUMO'
+                WHEN A00.A00_FANTASIA IS NULL OR LTRIM(RTRIM(A00.A00_FANTASIA)) = '' THEN 'SEM FORNECEDOR'
+                ELSE RTRIM(UPPER(A00.A00_FANTASIA)) 
+            END AS FORNECEDOR,
+            
+            CASE E02.E02_TIPO
+                WHEN 0 THEN 'Mercadoria para Revenda'
+                WHEN 1 THEN 'Matéria Prima'
+                WHEN 2 THEN 'Embalagem'
+                WHEN 3 THEN 'Produto em Processo'
+                WHEN 4 THEN 'Produto Acabado'
+                WHEN 5 THEN 'Subproduto'
+                WHEN 6 THEN 'Produto Intermediário'
+                WHEN 7 THEN 'Material de Uso e Consumo'
+                WHEN 8 THEN 'Ativo Imobilizado'
+                WHEN 9 THEN 'Serviços'
+                WHEN 10 THEN 'Outros Insumos'
+                WHEN 99 THEN 'Outros'
+                ELSE 'Não Definido'
+            END AS TIPO_DESC,
+            M01.M01_PRECOU,
+            
+            ROW_NUMBER() OVER (
+                PARTITION BY M01.M01_ID_E02
+                ORDER BY M00.M00_ENTSAI DESC, M00.M00_ID DESC
+            ) AS rn
+        FROM M00
+        INNER JOIN M01 ON M00.M00_ID = M01.M01_ID_M00
+        INNER JOIN E02 ON E02.E02_ID = M01.M01_ID_E02
+        INNER JOIN E01 ON E01.E01_ID = E02.E02_ID_E01
+        LEFT JOIN A00 ON M00.M00_ID_A00 = A00.A00_ID
+        WHERE M00.M00_DTLANC >= '2023-09-01'
+          AND M00.M00_ID_EMP IN (80, 81, 82)
+          AND (
+              M00.M00_STATUS = 'N' 
+              OR (M00.M00_STATUS = 'I' AND E02.E02_TIPO = 7)
+          )
+          AND E02.E02_TIPO IN (1, 2, 7, 10)
+          AND E02.E02_ATIVO = 1
+          AND E01.E01_DESC <> 'Outros'
+          AND M01.M01_ID_E02 <> 1 
+    ),
+    EstoqueSaldo AS (
+        SELECT
+            E03_ID_E02,
+            SUM(CASE WHEN E03_ID_E00 = 1 THEN ISNULL(E03_SLDQTD, 0) ELSE 0 END) AS SALDO_DEP_1,
+            SUM(CASE WHEN E03_ID_E00 = 7 THEN ISNULL(E03_SLDQTD, 0) ELSE 0 END) AS SALDO_DEP_7,
+            SUM(CASE WHEN E03_ID_E00 = 8 THEN ISNULL(E03_SLDQTD, 0) ELSE 0 END) AS SALDO_DEP_8
+        FROM E03
+        WHERE E03_ID_E00 IN (1, 7, 8)
+          AND E03_ID_E02 <> 1 
+        GROUP BY E03_ID_E02
+    ),
+    ProducoesAberto AS (
+        SELECT 
+            a.P21_ID_E02,
+            SUM(a.P21_PREV_QTD) AS TOTAL_PREV_QTD
+        FROM P21 a
+        INNER JOIN P20 b 
+            ON a.P21_ID_P20 = b.P20_ID
+        WHERE b.P20_STATUS = 'A'
+        GROUP BY a.P21_ID_E02
+    )
+    SELECT
+        upf.TIPO_DESC AS Tipo,
+        upf.Id_Fornecedor, 
+        upf.FORNECEDOR AS Fornecedor,
+        upf.M01_ID_E02 AS Cod,
+        upf.E02_DESC AS Descricao,
+        upf.E02_UM AS UM,
+        
+        FORMAT(ISNULL(es.SALDO_DEP_1, 0), 'N3', 'pt-BR') AS [Dep. Aberto (Interno)],
+        FORMAT(ISNULL(es.SALDO_DEP_7, 0), 'N3', 'pt-BR') AS [Dep. Fechado (Externo)],
+        FORMAT(ISNULL(es.SALDO_DEP_8, 0), 'N3', 'pt-BR') AS [Dep. Fechado (Interno)],
+        
+        FORMAT(ISNULL(pa.TOTAL_PREV_QTD, 0), 'N3', 'pt-BR') AS [Produções em Aberto]
+
+    FROM UltimoPorFornecedor upf
+    LEFT JOIN EstoqueSaldo es ON upf.M01_ID_E02 = es.E03_ID_E02
+    LEFT JOIN ProducoesAberto pa ON upf.M01_ID_E02 = pa.P21_ID_E02
+
+    WHERE upf.rn = 1 
+    ORDER BY Cod ASC;
+  `;
+};
+
+export interface ERPInventarioItem {
+  Tipo: string;
+  Id_Fornecedor: number | null;
+  Fornecedor: string;
+  Cod: number;
+  Descricao: string;
+  UM: string;
+  'Dep. Aberto (Interno)': string;
+  'Dep. Fechado (Externo)': string;
+  'Dep. Fechado (Interno)': string;
+  'Produções em Aberto': string;
+}

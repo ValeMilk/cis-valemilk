@@ -7,6 +7,7 @@ import pedidoRoutes from './routes/pedido.routes';
 import itemRoutes from './routes/item.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import fornecedorRoutes from './routes/fornecedor.routes';
+import inventarioRoutes from './routes/inventario.routes';
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ app.use('/api/pedidos', pedidoRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/fornecedores', fornecedorRoutes);
+app.use('/api/inventario', inventarioRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

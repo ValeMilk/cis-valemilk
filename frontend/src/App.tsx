@@ -9,6 +9,7 @@ import HistoricalAnalysisPage from './pages/HistoricalAnalysisPage';
 import CreatePedidoPage from './pages/CreatePedidoPage';
 import FornecedoresPage from './pages/FornecedoresPage';
 import UsersPage from './pages/UsersPage';
+import InventarioPage from './pages/InventarioPage';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -101,6 +102,16 @@ function App() {
           <ProtectedRoute>
             <Layout>
               <UsersPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/inventario"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <InventarioPage />
             </Layout>
           </ProtectedRoute>
         }
