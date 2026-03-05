@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth';
 import { executeERPQuery, getInventarioQuery, ERPInventarioItem } from '../services/erp.service';
 import { Inventario, IInventarioItem } from '../models/Inventario';
+import User from '../models/User';
 
 const router = Router();
 
@@ -31,6 +32,10 @@ router.get('/active', authMiddleware, async (req, res) => {
 router.post('/sync-erp', authMiddleware, async (req, res) => {
   try {
     const user = (req as any).user;
+    
+    // Buscar nome do usuário no banco
+    const userDoc = await User.findById(user.id).select('nome');
+    const nomeUsuario = userDoc?.nome || user.email;
     
     // Buscar dados do ERP
     const erpItems = await executeERPQuery<ERPInventarioItem>(getInventarioQuery());
@@ -100,7 +105,7 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
         data_snapshot: new Date(),
         status: 'em_andamento',
         criado_por: user.id,
-        criado_por_nome: user.nome,
+        criado_por_nome: nomeUsuario,
         itens
       });
       
