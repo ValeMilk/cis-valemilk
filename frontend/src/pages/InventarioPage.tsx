@@ -33,7 +33,7 @@ const InventarioPage = () => {
   const [syncing, setSyncing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState('');
-  const [depositoFilter, setDepositoFilter] = useState('');
+  const [depositoFilter, setDepositoFilter] = useState('aberto');
   const [contagemFilter, setContagemFilter] = useState<'todos' | 'pendentes' | 'contados'>('todos');
   const [savingItem, setSavingItem] = useState<string | null>(null);
   const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -92,8 +92,9 @@ const InventarioPage = () => {
       filtered = filtered.filter(item => item.tipo === tipoFilter);
     }
 
+    // Filtrar itens com saldo > 0 no depósito selecionado
     if (depositoFilter === 'aberto') {
-      filtered = filtered.filter(item => item.dep_aberto_interno > 0);
+      filtered = filtered.filter(item => item.dep_aberto_interno > 0 || item.producoes_aberto > 0);
     } else if (depositoFilter === 'fechado_ext') {
       filtered = filtered.filter(item => item.dep_fechado_externo > 0);
     } else if (depositoFilter === 'fechado_int') {
@@ -353,7 +354,6 @@ const InventarioPage = () => {
                 onChange={(e) => setDepositoFilter(e.target.value)}
                 className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Todos os Depósitos</option>
                 <option value="aberto">Dep. Aberto (Interno)</option>
                 <option value="fechado_ext">Dep. Fechado (Externo)</option>
                 <option value="fechado_int">Dep. Fechado (Interno)</option>
@@ -379,23 +379,34 @@ const InventarioPage = () => {
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descrição</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">UM</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Tipo</th>
-                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Dep. Aberto</th>
-                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Prod. Aberto</th>
-                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Dep. Real</th>
+                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {depositoFilter === 'aberto' ? 'Dep. Aberto' : depositoFilter === 'fechado_ext' ? 'Dep. Fechado (Ext)' : 'Dep. Fechado (Int)'}
+                  </th>
+                  {depositoFilter === 'aberto' && (
+                    <>
+                      <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Prod. Aberto</th>
+                      <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Dep. Real</th>
+                    </>
+                  )}
                   <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-36">Contagem</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredItems.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={depositoFilter === 'aberto' ? 8 : 6} className="px-4 py-8 text-center text-gray-500">
                       Nenhum item encontrado
                     </td>
                   </tr>
                 ) : (
                   filteredItems.map((item) => {
+                    const saldoDeposito = depositoFilter === 'aberto'
+                      ? item.dep_aberto_real
+                      : depositoFilter === 'fechado_ext'
+                        ? item.dep_fechado_externo
+                        : item.dep_fechado_interno;
                     const diferenca = item.contagem_fisica !== null && item.contagem_fisica !== undefined
-                      ? item.contagem_fisica - item.dep_aberto_real
+                      ? item.contagem_fisica - saldoDeposito
                       : null;
                     
                     return (
@@ -415,14 +426,22 @@ const InventarioPage = () => {
                           </span>
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900">
-                          {formatNumber(item.dep_aberto_interno)}
+                          {depositoFilter === 'aberto'
+                            ? formatNumber(item.dep_aberto_interno)
+                            : depositoFilter === 'fechado_ext'
+                              ? formatNumber(item.dep_fechado_externo)
+                              : formatNumber(item.dep_fechado_interno)}
                         </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900 hidden md:table-cell">
-                          {formatNumber(item.producoes_aberto)}
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-semibold text-blue-700">
-                          {formatNumber(item.dep_aberto_real)}
-                        </td>
+                        {depositoFilter === 'aberto' && (
+                          <>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900 hidden md:table-cell">
+                              {formatNumber(item.producoes_aberto)}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-semibold text-blue-700">
+                              {formatNumber(item.dep_aberto_real)}
+                            </td>
+                          </>
+                        )}
                         <td className="px-3 py-2 whitespace-nowrap">
                           <div className="flex items-center space-x-1">
                             <input
