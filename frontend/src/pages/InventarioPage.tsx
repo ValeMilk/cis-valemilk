@@ -13,7 +13,9 @@ interface InventarioItem {
   dep_fechado_interno: number;
   producoes_aberto: number;
   dep_aberto_real: number;
-  contagem_fisica: number | null;
+  contagem_aberto: number | null;
+  contagem_fechado_ext: number | null;
+  contagem_fechado_int: number | null;
   contagem_data?: string;
   contagem_usuario?: string;
 }
@@ -75,6 +77,18 @@ const InventarioPage = () => {
     }
   };
 
+  const getContagem = (item: InventarioItem): number | null => {
+    if (depositoFilter === 'aberto') return item.contagem_aberto;
+    if (depositoFilter === 'fechado_ext') return item.contagem_fechado_ext;
+    return item.contagem_fechado_int;
+  };
+
+  const getContagemField = (): string => {
+    if (depositoFilter === 'aberto') return 'contagem_aberto';
+    if (depositoFilter === 'fechado_ext') return 'contagem_fechado_ext';
+    return 'contagem_fechado_int';
+  };
+
   const filterItems = () => {
     if (!inventario) return;
     let filtered = [...inventario.itens];
@@ -102,9 +116,9 @@ const InventarioPage = () => {
     }
 
     if (contagemFilter === 'pendentes') {
-      filtered = filtered.filter(item => item.contagem_fisica === null || item.contagem_fisica === undefined);
+      filtered = filtered.filter(item => getContagem(item) === null || getContagem(item) === undefined);
     } else if (contagemFilter === 'contados') {
-      filtered = filtered.filter(item => item.contagem_fisica !== null && item.contagem_fisica !== undefined);
+      filtered = filtered.filter(item => getContagem(item) !== null && getContagem(item) !== undefined);
     }
 
     setFilteredItems(filtered);
@@ -116,17 +130,19 @@ const InventarioPage = () => {
     setSavingItem(codigoItem);
     try {
       await api.put(`/inventario/${inventario._id}/item/${codigoItem}`, {
-        contagem_fisica: value
+        contagem_fisica: value,
+        deposito: depositoFilter
       });
       
       // Atualizar localmente
+      const field = getContagemField();
       setInventario(prev => {
         if (!prev) return prev;
         return {
           ...prev,
           itens: prev.itens.map(item =>
             item.codigo_item === codigoItem
-              ? { ...item, contagem_fisica: value, contagem_data: new Date().toISOString() }
+              ? { ...item, [field]: value, contagem_data: new Date().toISOString() }
               : item
           )
         };
@@ -137,10 +153,11 @@ const InventarioPage = () => {
     } finally {
       setSavingItem(null);
     }
-  }, [inventario]);
+  }, [inventario, depositoFilter]);
 
   const handleContagemChange = (codigoItem: string, rawValue: string) => {
     const value = rawValue === '' ? null : parseFloat(rawValue);
+    const field = getContagemField();
     
     // Atualizar UI imediatamente
     setInventario(prev => {
@@ -149,7 +166,7 @@ const InventarioPage = () => {
         ...prev,
         itens: prev.itens.map(item =>
           item.codigo_item === codigoItem
-            ? { ...item, contagem_fisica: value }
+            ? { ...item, [field]: value }
             : item
         )
       };
@@ -167,7 +184,10 @@ const InventarioPage = () => {
   const finalizarInventario = async () => {
     if (!inventario) return;
     
-    const pendentes = inventario.itens.filter(i => i.contagem_fisica === null || i.contagem_fisica === undefined).length;
+    const pendentes = inventario.itens.filter(i => {
+      const c_ab = i.contagem_aberto; const c_fe = i.contagem_fechado_ext; const c_fi = i.contagem_fechado_int;
+      return (c_ab === null || c_ab === undefined) && (c_fe === null || c_fe === undefined) && (c_fi === null || c_fi === undefined);
+    }).length;
     const msg = pendentes > 0
       ? `Ainda existem ${pendentes} itens sem contagem. Deseja finalizar mesmo assim?`
       : 'Deseja finalizar o inventário?';
@@ -207,7 +227,10 @@ const InventarioPage = () => {
 
   // Stats
   const totalItens = inventario?.itens.length || 0;
-  const contados = inventario?.itens.filter(i => i.contagem_fisica !== null && i.contagem_fisica !== undefined).length || 0;
+  const contados = inventario?.itens.filter(i => {
+    const c = depositoFilter === 'aberto' ? i.contagem_aberto : depositoFilter === 'fechado_ext' ? i.contagem_fechado_ext : i.contagem_fechado_int;
+    return c !== null && c !== undefined;
+  }).length || 0;
   const pendentes = totalItens - contados;
   const progresso = totalItens > 0 ? Math.round((contados / totalItens) * 100) : 0;
 
@@ -400,13 +423,14 @@ const InventarioPage = () => {
                   </tr>
                 ) : (
                   filteredItems.map((item) => {
+                    const contagemAtual = getContagem(item);
                     const saldoDeposito = depositoFilter === 'aberto'
                       ? item.dep_aberto_real
                       : depositoFilter === 'fechado_ext'
                         ? item.dep_fechado_externo
                         : item.dep_fechado_interno;
-                    const diferenca = item.contagem_fisica !== null && item.contagem_fisica !== undefined
-                      ? item.contagem_fisica - saldoDeposito
+                    const diferenca = contagemAtual !== null && contagemAtual !== undefined
+                      ? contagemAtual - saldoDeposito
                       : null;
                     
                     return (
@@ -447,7 +471,7 @@ const InventarioPage = () => {
                             <input
                               type="number"
                               step="any"
-                              value={item.contagem_fisica !== null && item.contagem_fisica !== undefined ? item.contagem_fisica : ''}
+                              value={contagemAtual !== null && contagemAtual !== undefined ? contagemAtual : ''}
                               onChange={(e) => handleContagemChange(item.codigo_item, e.target.value)}
                               disabled={inventario.status === 'finalizado'}
                               className={`w-24 px-2 py-1 border rounded text-sm text-right focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
@@ -460,7 +484,7 @@ const InventarioPage = () => {
                             {savingItem === item.codigo_item && (
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
                             )}
-                            {item.contagem_fisica !== null && item.contagem_fisica !== undefined && savingItem !== item.codigo_item && (
+                            {contagemAtual !== null && contagemAtual !== undefined && savingItem !== item.codigo_item && (
                               <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
                             )}
                           </div>

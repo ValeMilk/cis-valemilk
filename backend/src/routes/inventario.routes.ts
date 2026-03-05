@@ -58,7 +58,9 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
         dep_fechado_interno: parseFormattedNumber(erpItem['Dep. Fechado (Interno)']),
         producoes_aberto: producoesAberto,
         dep_aberto_real: depAbertoReal,
-        contagem_fisica: null,
+        contagem_aberto: null,
+        contagem_fechado_ext: null,
+        contagem_fechado_int: null,
         contagem_data: undefined,
         contagem_usuario: undefined
       };
@@ -69,11 +71,14 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
     
     if (inventarioExistente) {
       // Preservar contagens já feitas
-      const contagensMap = new Map<string, { contagem: number | null; data?: Date; usuario?: string }>();
+      const contagensMap = new Map<string, { aberto: number | null; fechado_ext: number | null; fechado_int: number | null; data?: Date; usuario?: string }>();
       for (const item of inventarioExistente.itens) {
-        if (item.contagem_fisica !== null && item.contagem_fisica !== undefined) {
+        const temContagem = (item as any).contagem_aberto !== null || (item as any).contagem_fechado_ext !== null || (item as any).contagem_fechado_int !== null;
+        if (temContagem) {
           contagensMap.set(item.codigo_item, {
-            contagem: item.contagem_fisica,
+            aberto: (item as any).contagem_aberto,
+            fechado_ext: (item as any).contagem_fechado_ext,
+            fechado_int: (item as any).contagem_fechado_int,
             data: item.contagem_data,
             usuario: item.contagem_usuario
           });
@@ -86,7 +91,9 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
         if (contagemExistente) {
           return {
             ...item,
-            contagem_fisica: contagemExistente.contagem,
+            contagem_aberto: contagemExistente.aberto,
+            contagem_fechado_ext: contagemExistente.fechado_ext,
+            contagem_fechado_int: contagemExistente.fechado_int,
             contagem_data: contagemExistente.data,
             contagem_usuario: contagemExistente.usuario
           };
@@ -122,7 +129,7 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
 router.put('/:inventarioId/item/:codigoItem', authMiddleware, async (req, res) => {
   try {
     const { inventarioId, codigoItem } = req.params;
-    const { contagem_fisica } = req.body;
+    const { contagem_fisica, deposito } = req.body;
     const user = (req as any).user;
     
     const inventario = await Inventario.findById(inventarioId);
@@ -134,15 +141,26 @@ router.put('/:inventarioId/item/:codigoItem', authMiddleware, async (req, res) =
       return res.status(400).json({ message: 'Inventário já finalizado' });
     }
     
-    // Encontrar o item e atualizar contagem
+    // Encontrar o item e atualizar contagem do depósito específico
     const item = inventario.itens.find(i => i.codigo_item === codigoItem);
     if (!item) {
       return res.status(404).json({ message: 'Item não encontrado no inventário' });
     }
     
-    item.contagem_fisica = contagem_fisica !== null && contagem_fisica !== undefined 
+    const valor = contagem_fisica !== null && contagem_fisica !== undefined 
       ? Number(contagem_fisica) 
       : null;
+    
+    if (deposito === 'aberto') {
+      (item as any).contagem_aberto = valor;
+    } else if (deposito === 'fechado_ext') {
+      (item as any).contagem_fechado_ext = valor;
+    } else if (deposito === 'fechado_int') {
+      (item as any).contagem_fechado_int = valor;
+    } else {
+      return res.status(400).json({ message: 'Depósito inválido' });
+    }
+    
     item.contagem_data = new Date();
     item.contagem_usuario = user.id;
     

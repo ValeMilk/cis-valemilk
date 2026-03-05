@@ -10,10 +10,12 @@ export interface IInventarioItem {
   dep_fechado_externo: number;
   dep_fechado_interno: number;
   producoes_aberto: number;
-  dep_aberto_real: number; // Calculado: dep_aberto_interno - producoes_aberto
-  contagem_fisica: number | null; // Digitada pelo usuário
-  contagem_data?: Date; // Data/hora da contagem
-  contagem_usuario?: string; // ID do usuário que fez a contagem
+  dep_aberto_real: number;
+  contagem_aberto: number | null;
+  contagem_fechado_ext: number | null;
+  contagem_fechado_int: number | null;
+  contagem_data?: Date;
+  contagem_usuario?: string;
 }
 
 export interface IInventario extends Document {
@@ -37,7 +39,9 @@ const InventarioItemSchema = new Schema({
   dep_fechado_interno: { type: Number, default: 0 },
   producoes_aberto: { type: Number, default: 0 },
   dep_aberto_real: { type: Number, default: 0 },
-  contagem_fisica: { type: Number, default: null },
+  contagem_aberto: { type: Number, default: null },
+  contagem_fechado_ext: { type: Number, default: null },
+  contagem_fechado_int: { type: Number, default: null },
   contagem_data: { type: Date },
   contagem_usuario: { type: String }
 });
