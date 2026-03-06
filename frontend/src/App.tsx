@@ -5,7 +5,6 @@ import DashboardPage from './pages/DashboardPage';
 import PedidosPage from './pages/PedidosPage';
 import PedidoDetailPage from './pages/PedidoDetailPage';
 import ItemsAnalysisPage from './pages/ItemsAnalysisPage';
-import HistoricalAnalysisPage from './pages/HistoricalAnalysisPage';
 import HistoricoComprasPage from './pages/HistoricoComprasPage';
 import CreatePedidoPage from './pages/CreatePedidoPage';
 import FornecedoresPage from './pages/FornecedoresPage';
@@ -74,16 +73,6 @@ function App() {
           <ProtectedRoute>
             <Layout>
               <ItemsAnalysisPage />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/items/historical"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <HistoricalAnalysisPage />
             </Layout>
           </ProtectedRoute>
         }
