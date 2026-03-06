@@ -31,6 +31,8 @@ const HistoricoComprasPage = () => {
   const [selectedFornecedor, setSelectedFornecedor] = useState('');
   const [selectedIdFornecedor, setSelectedIdFornecedor] = useState('');
   const [selectedProduto, setSelectedProduto] = useState('');
+  const [dataInicio, setDataInicio] = useState('');
+  const [dataFim, setDataFim] = useState('');
 
   // Busca nos dropdowns
   const [buscaProduto, setBuscaProduto] = useState('');
@@ -119,6 +121,13 @@ const HistoricoComprasPage = () => {
     return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [allData, selectedTipo, selectedFornecedor, selectedProduto]);
 
+  // Converte dd/mm/yyyy para Date para comparação
+  const parseDataEntrada = (dateStr: string): Date | null => {
+    const parts = dateStr.split('/');
+    if (parts.length !== 3) return null;
+    return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+  };
+
   // Dados filtrados para os gráficos
   const filteredData = useMemo(() => {
     let data = allData;
@@ -126,8 +135,22 @@ const HistoricoComprasPage = () => {
     if (selectedFornecedor) data = data.filter(d => d.fornecedor === selectedFornecedor);
     if (selectedIdFornecedor) data = data.filter(d => String(d.id_fornecedor) === selectedIdFornecedor);
     if (selectedProduto) data = data.filter(d => d.codigo === selectedProduto);
+    if (dataInicio) {
+      const inicio = new Date(dataInicio + 'T00:00:00');
+      data = data.filter(d => {
+        const dt = parseDataEntrada(d.data_entrada);
+        return dt && dt >= inicio;
+      });
+    }
+    if (dataFim) {
+      const fim = new Date(dataFim + 'T23:59:59');
+      data = data.filter(d => {
+        const dt = parseDataEntrada(d.data_entrada);
+        return dt && dt <= fim;
+      });
+    }
     return data;
-  }, [allData, selectedTipo, selectedFornecedor, selectedIdFornecedor, selectedProduto]);
+  }, [allData, selectedTipo, selectedFornecedor, selectedIdFornecedor, selectedProduto, dataInicio, dataFim]);
 
   // Dados para gráficos de linha (por data)
   const chartDataTimeline = useMemo(() => {
@@ -180,7 +203,7 @@ const HistoricoComprasPage = () => {
     return item ? `${item.codigo} - ${item.descricao}` : selectedProduto;
   }, [selectedProduto, allData]);
 
-  const hasFilters = selectedTipo || selectedFornecedor || selectedIdFornecedor || selectedProduto;
+  const hasFilters = selectedTipo || selectedFornecedor || selectedIdFornecedor || selectedProduto || dataInicio || dataFim;
 
   const clearFilters = () => {
     setSelectedTipo('');
@@ -188,6 +211,8 @@ const HistoricoComprasPage = () => {
     setSelectedIdFornecedor('');
     setSelectedProduto('');
     setBuscaProduto('');
+    setDataInicio('');
+    setDataFim('');
   };
 
   // Totalizadores
@@ -232,7 +257,7 @@ const HistoricoComprasPage = () => {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Tipo */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
@@ -318,6 +343,28 @@ const HistoricoComprasPage = () => {
                 )}
               </div>
             )}
+          </div>
+
+          {/* Data Início */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Data Início</label>
+            <input
+              type="date"
+              value={dataInicio}
+              onChange={(e) => setDataInicio(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          {/* Data Fim */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Data Fim</label>
+            <input
+              type="date"
+              value={dataFim}
+              onChange={(e) => setDataFim(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
           </div>
         </div>
       </div>
