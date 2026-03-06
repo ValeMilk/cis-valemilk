@@ -315,6 +315,7 @@ router.get('/historico-compras-all', authMiddleware, async (req, res) => {
       codigo: String(row.Cod).padStart(6, '0'),
       descricao: row.Descricao?.trim() || '',
       unidade: row.Unidade,
+      id_fornecedor: row.Id_Fornecedor,
       fornecedor: row.Fornecedor,
       data_entrada: row['Data Entrada'],
       quantidade: row.Quantidade,

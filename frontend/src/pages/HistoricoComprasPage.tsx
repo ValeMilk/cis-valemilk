@@ -8,6 +8,7 @@ interface HistoricoCompra {
   codigo: string;
   descricao: string;
   unidade: string;
+  id_fornecedor: number | null;
   fornecedor: string;
   data_entrada: string;
   quantidade: number;
@@ -28,16 +29,14 @@ const HistoricoComprasPage = () => {
   // Filtros selecionados
   const [selectedTipo, setSelectedTipo] = useState('');
   const [selectedFornecedor, setSelectedFornecedor] = useState('');
+  const [selectedIdFornecedor, setSelectedIdFornecedor] = useState('');
   const [selectedProduto, setSelectedProduto] = useState('');
 
   // Busca nos dropdowns
   const [buscaProduto, setBuscaProduto] = useState('');
-  const [buscaFornecedor, setBuscaFornecedor] = useState('');
   const [showProdutoDropdown, setShowProdutoDropdown] = useState(false);
-  const [showFornecedorDropdown, setShowFornecedorDropdown] = useState(false);
 
   const produtoRef = useRef<HTMLDivElement>(null);
-  const fornecedorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchData();
@@ -48,9 +47,6 @@ const HistoricoComprasPage = () => {
     const handleClickOutside = (e: MouseEvent) => {
       if (produtoRef.current && !produtoRef.current.contains(e.target as Node)) {
         setShowProdutoDropdown(false);
-      }
-      if (fornecedorRef.current && !fornecedorRef.current.contains(e.target as Node)) {
-        setShowFornecedorDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -101,24 +97,37 @@ const HistoricoComprasPage = () => {
     let filtered = allData;
     if (selectedTipo) filtered = filtered.filter(d => d.tipo === selectedTipo);
     if (selectedProduto) filtered = filtered.filter(d => d.codigo === selectedProduto);
+    if (selectedIdFornecedor) filtered = filtered.filter(d => String(d.id_fornecedor) === selectedIdFornecedor);
 
     const list = Array.from(new Set(filtered.map(d => d.fornecedor))).sort();
-
-    if (buscaFornecedor) {
-      const search = buscaFornecedor.toLowerCase();
-      return list.filter(f => f.toLowerCase().includes(search));
-    }
     return list;
-  }, [allData, selectedTipo, selectedProduto, buscaFornecedor]);
+  }, [allData, selectedTipo, selectedProduto, selectedIdFornecedor]);
+
+  const uniqueIdFornecedores = useMemo(() => {
+    let filtered = allData;
+    if (selectedTipo) filtered = filtered.filter(d => d.tipo === selectedTipo);
+    if (selectedFornecedor) filtered = filtered.filter(d => d.fornecedor === selectedFornecedor);
+    if (selectedProduto) filtered = filtered.filter(d => d.codigo === selectedProduto);
+
+    const map = new Map<string, string>();
+    for (const d of filtered) {
+      const id = String(d.id_fornecedor ?? '');
+      if (id && !map.has(id)) {
+        map.set(id, `${id} - ${d.fornecedor}`);
+      }
+    }
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [allData, selectedTipo, selectedFornecedor, selectedProduto]);
 
   // Dados filtrados para os gráficos
   const filteredData = useMemo(() => {
     let data = allData;
     if (selectedTipo) data = data.filter(d => d.tipo === selectedTipo);
     if (selectedFornecedor) data = data.filter(d => d.fornecedor === selectedFornecedor);
+    if (selectedIdFornecedor) data = data.filter(d => String(d.id_fornecedor) === selectedIdFornecedor);
     if (selectedProduto) data = data.filter(d => d.codigo === selectedProduto);
     return data;
-  }, [allData, selectedTipo, selectedFornecedor, selectedProduto]);
+  }, [allData, selectedTipo, selectedFornecedor, selectedIdFornecedor, selectedProduto]);
 
   // Dados para gráficos de linha (por data)
   const chartDataTimeline = useMemo(() => {
@@ -171,14 +180,14 @@ const HistoricoComprasPage = () => {
     return item ? `${item.codigo} - ${item.descricao}` : selectedProduto;
   }, [selectedProduto, allData]);
 
-  const hasFilters = selectedTipo || selectedFornecedor || selectedProduto;
+  const hasFilters = selectedTipo || selectedFornecedor || selectedIdFornecedor || selectedProduto;
 
   const clearFilters = () => {
     setSelectedTipo('');
     setSelectedFornecedor('');
+    setSelectedIdFornecedor('');
     setSelectedProduto('');
     setBuscaProduto('');
-    setBuscaFornecedor('');
   };
 
   // Totalizadores
@@ -223,7 +232,7 @@ const HistoricoComprasPage = () => {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Tipo */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
@@ -237,52 +246,30 @@ const HistoricoComprasPage = () => {
             </select>
           </div>
 
-          {/* Fornecedor - searchable */}
-          <div ref={fornecedorRef} className="relative">
+          {/* Id Fornecedor - dropdown */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">ID Fornecedor</label>
+            <select
+              value={selectedIdFornecedor}
+              onChange={(e) => { setSelectedIdFornecedor(e.target.value); setSelectedProduto(''); setBuscaProduto(''); }}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Todos os IDs</option>
+              {uniqueIdFornecedores.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+            </select>
+          </div>
+
+          {/* Fornecedor - dropdown */}
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Fornecedor</label>
-            <div className="relative">
-              <input
-                type="text"
-                value={selectedFornecedor || buscaFornecedor}
-                onChange={(e) => {
-                  setBuscaFornecedor(e.target.value);
-                  setSelectedFornecedor('');
-                  setShowFornecedorDropdown(true);
-                }}
-                onFocus={() => setShowFornecedorDropdown(true)}
-                placeholder="Buscar fornecedor..."
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              {selectedFornecedor ? (
-                <button onClick={() => { setSelectedFornecedor(''); setBuscaFornecedor(''); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  <X size={16} />
-                </button>
-              ) : (
-                <ChevronDown size={16} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-              )}
-            </div>
-            {showFornecedorDropdown && !selectedFornecedor && (
-              <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                <button
-                  onClick={() => { setSelectedFornecedor(''); setBuscaFornecedor(''); setShowFornecedorDropdown(false); }}
-                  className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm text-gray-500"
-                >
-                  Todos os Fornecedores
-                </button>
-                {uniqueFornecedores.map(f => (
-                  <button
-                    key={f}
-                    onClick={() => { setSelectedFornecedor(f); setBuscaFornecedor(''); setShowFornecedorDropdown(false); setSelectedProduto(''); setBuscaProduto(''); }}
-                    className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm truncate"
-                  >
-                    {f}
-                  </button>
-                ))}
-                {uniqueFornecedores.length === 0 && (
-                  <p className="px-3 py-2 text-sm text-gray-400">Nenhum fornecedor encontrado</p>
-                )}
-              </div>
-            )}
+            <select
+              value={selectedFornecedor}
+              onChange={(e) => { setSelectedFornecedor(e.target.value); setSelectedProduto(''); setBuscaProduto(''); }}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Todos os Fornecedores</option>
+              {uniqueFornecedores.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
           </div>
 
           {/* Produto - searchable */}
