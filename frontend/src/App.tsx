@@ -6,6 +6,7 @@ import PedidosPage from './pages/PedidosPage';
 import PedidoDetailPage from './pages/PedidoDetailPage';
 import ItemsAnalysisPage from './pages/ItemsAnalysisPage';
 import HistoricalAnalysisPage from './pages/HistoricalAnalysisPage';
+import HistoricoComprasPage from './pages/HistoricoComprasPage';
 import CreatePedidoPage from './pages/CreatePedidoPage';
 import FornecedoresPage from './pages/FornecedoresPage';
 import UsersPage from './pages/UsersPage';
@@ -83,6 +84,16 @@ function App() {
           <ProtectedRoute>
             <Layout>
               <HistoricalAnalysisPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/historico-compras"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <HistoricoComprasPage />
             </Layout>
           </ProtectedRoute>
         }

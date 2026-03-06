@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth';
-import { executeERPQuery, getItemsQuery, getHistoricalItemsQuery, getFornecedorItensHistoricoQuery, getHistoricoComprasQuery, ERPItem, ERPFornecedorItem, ERPHistoricoCompra } from '../services/erp.service';
+import { executeERPQuery, getItemsQuery, getHistoricalItemsQuery, getFornecedorItensHistoricoQuery, getHistoricoComprasQuery, getHistoricoComprasAllQuery, ERPItem, ERPFornecedorItem, ERPHistoricoCompra } from '../services/erp.service';
 import { Pedido } from '../models/Pedido';
 import { StatusPedido } from '../types/enums';
 
@@ -303,6 +303,28 @@ router.get('/fornecedor-itens-map', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao buscar mapa fornecedor-itens:', error);
     res.json({}); // Fallback vazio (frontend usa filtro simples)
+  }
+});
+
+// Get histórico de compras COMPLETO (todos os itens)
+router.get('/historico-compras-all', authMiddleware, async (req, res) => {
+  try {
+    const rows = await executeERPQuery<ERPHistoricoCompra>(getHistoricoComprasAllQuery());
+    const resultado = rows.map(row => ({
+      tipo: row.Tipo,
+      codigo: String(row.Cod).padStart(6, '0'),
+      descricao: row.Descricao?.trim() || '',
+      unidade: row.Unidade,
+      fornecedor: row.Fornecedor,
+      data_entrada: row['Data Entrada'],
+      quantidade: row.Quantidade,
+      valor_unitario: row['Valor Unitario'],
+      valor_total: row['Valor Total']
+    }));
+    res.json(resultado);
+  } catch (error) {
+    console.error('❌ Erro ao buscar histórico completo:', error);
+    res.status(500).json({ message: 'Erro ao buscar histórico de compras' });
   }
 });
 
