@@ -564,6 +564,8 @@ export const getHistoricoComprasQuery = (codigoItem: number): string => {
       AND E02.E02_TIPO IN (1, 2, 7, 10)
       AND E02.E02_ATIVO = 1
       AND E01.E01_DESC <> 'Outros'
+      AND M01.M01_ID_E02 <> 1
+      AND UPPER(E02.E02_DESC) NOT LIKE '%LEITE IN NATURA%'
       AND M01.M01_ID_E02 = ${codigoItem}
     ORDER BY M00.M00_ENTSAI ASC;
   `;
@@ -625,6 +627,8 @@ export const getHistoricoComprasAllQuery = (): string => {
       AND E02.E02_TIPO IN (1, 2, 7, 10)
       AND E02.E02_ATIVO = 1
       AND E01.E01_DESC <> 'Outros'
+      AND M01.M01_ID_E02 <> 1
+      AND UPPER(E02.E02_DESC) NOT LIKE '%LEITE IN NATURA%'
     ORDER BY M00.M00_ENTSAI ASC;
   `;
 };
