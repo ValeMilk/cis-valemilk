@@ -450,7 +450,7 @@ const InventarioPage = () => {
                   </th>
                   {depositoFilter === 'aberto' && (
                     <>
-                      <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Prod. Aberto</th>
+                      <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">OPS ABERTAS</th>
                       <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Dep. Real</th>
                     </>
                   )}
