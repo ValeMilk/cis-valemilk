@@ -418,7 +418,7 @@ const HistoricoComprasPage = () => {
               <BarChart data={chartDataProduto} layout="vertical" margin={{ left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" tickFormatter={(v) => formatCurrency(v)} tick={{ fontSize: 10 }} />
-                <YAxis type="category" dataKey="produto" width={220} tick={{ fontSize: 10 }} />
+                <YAxis type="category" dataKey="produto" width={300} tick={{ fontSize: 10 }} />
                 <Tooltip
                   formatter={(value: number) => [formatCurrency(value), 'Valor Total']}
                   labelFormatter={(label) => label}
@@ -566,7 +566,7 @@ const HistoricoComprasPage = () => {
                     <BarChart data={chartDataProduto} layout="vertical" margin={{ left: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" tickFormatter={(v) => formatCurrency(v)} tick={{ fontSize: 10 }} />
-                      <YAxis type="category" dataKey="produto" width={220} tick={{ fontSize: 10 }} />
+                      <YAxis type="category" dataKey="produto" width={300} tick={{ fontSize: 10 }} />
                       <Tooltip
                         formatter={(value: number, name: string) => {
                           if (name === 'Valor Total') return [formatCurrency(value), name];
