@@ -520,3 +520,64 @@ export interface ERPFornecedorItem {
   Fornecedor: string;
   Cod: string;
 }
+
+// Query para histórico de compras de um item (timeline)
+export const getHistoricoComprasQuery = (codigoItem: number): string => {
+  return `
+    SELECT
+        CASE E02.E02_TIPO
+            WHEN 0 THEN 'Mercadoria para Revenda'
+            WHEN 1 THEN 'Matéria Prima'
+            WHEN 2 THEN 'Embalagem'
+            WHEN 3 THEN 'Produto em Processo'
+            WHEN 4 THEN 'Produto Acabado'
+            WHEN 5 THEN 'Subproduto'
+            WHEN 6 THEN 'Produto Intermediário'
+            WHEN 7 THEN 'Material de Uso e Consumo'
+            WHEN 8 THEN 'Ativo Imobilizado'
+            WHEN 9 THEN 'Serviços'
+            WHEN 10 THEN 'Outros Insumos'
+            WHEN 99 THEN 'Outros'
+            ELSE 'Não Definido'
+        END AS Tipo,
+        M01.M01_ID_E02 AS Cod,
+        E02.E02_DESC AS Descricao,
+        E02.E02_UM AS Unidade,
+        M00.M00_ID_A00 AS Id_Fornecedor,
+        CASE 
+            WHEN E02.E02_TIPO = 7 THEN 'MATERIAL DE USO E CONSUMO'
+            WHEN A00.A00_FANTASIA IS NULL OR LTRIM(RTRIM(A00.A00_FANTASIA)) = '' THEN 'SEM FORNECEDOR'
+            ELSE RTRIM(UPPER(A00.A00_FANTASIA)) 
+        END AS Fornecedor,
+        CONVERT(VARCHAR, M00.M00_ENTSAI, 103) AS [Data Entrada],
+        M01.M01_QTD AS Quantidade,
+        M01.M01_PRECOU AS [Valor Unitario],
+        M01.M01_QTD * M01.M01_PRECOU AS [Valor Total]
+    FROM M00
+    INNER JOIN M01 ON M00.M00_ID = M01.M01_ID_M00
+    INNER JOIN E02 ON E02.E02_ID = M01.M01_ID_E02
+    INNER JOIN E01 ON E01.E01_ID = E02.E02_ID_E01
+    LEFT JOIN A00 ON M00.M00_ID_A00 = A00.A00_ID
+    WHERE M00.M00_DTLANC >= '2023-09-01'
+      AND M00.M00_ID_EMP IN (80, 81, 82)
+      AND (M00.M00_STATUS = 'N' OR (M00.M00_STATUS = 'I' AND E02.E02_TIPO = 7))
+      AND E02.E02_TIPO IN (1, 2, 7, 10)
+      AND E02.E02_ATIVO = 1
+      AND E01.E01_DESC <> 'Outros'
+      AND M01.M01_ID_E02 = ${codigoItem}
+    ORDER BY M00.M00_ENTSAI ASC;
+  `;
+};
+
+export interface ERPHistoricoCompra {
+  Tipo: string;
+  Cod: number;
+  Descricao: string;
+  Unidade: string;
+  Id_Fornecedor: number | null;
+  Fornecedor: string;
+  'Data Entrada': string;
+  Quantidade: number;
+  'Valor Unitario': number;
+  'Valor Total': number;
+}

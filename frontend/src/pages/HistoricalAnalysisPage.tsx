@@ -1,7 +1,20 @@
 import { useState, useEffect } from 'react';
-import { Package, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, TrendingUp } from 'lucide-react';
+import { Package, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, TrendingUp, X } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import api from '../services/api';
 import { Item } from '../types';
+
+interface HistoricoCompra {
+  tipo: string;
+  codigo: string;
+  descricao: string;
+  unidade: string;
+  fornecedor: string;
+  data_entrada: string;
+  quantidade: number;
+  valor_unitario: number;
+  valor_total: number;
+}
 
 const HistoricalAnalysisPage = () => {
   const [items, setItems] = useState<Item[]>([]);
@@ -12,6 +25,10 @@ const HistoricalAnalysisPage = () => {
   const [classeFilter, setClasseFilter] = useState<string>('');
   const [sortColumn, setSortColumn] = useState<string>('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [historicoModal, setHistoricoModal] = useState(false);
+  const [historicoData, setHistoricoData] = useState<HistoricoCompra[]>([]);
+  const [historicoLoading, setHistoricoLoading] = useState(false);
+  const [historicoItem, setHistoricoItem] = useState<Item | null>(null);
 
   useEffect(() => {
     fetchItems();
@@ -163,6 +180,32 @@ const HistoricalAnalysisPage = () => {
   // Get unique valores for filters
   const uniqueTipos = Array.from(new Set(items.map(item => item.tipo))).sort();
   const uniqueClasses = Array.from(new Set(items.map(item => item.classe_abc))).filter(Boolean).sort();
+
+  const abrirHistorico = async (item: Item) => {
+    setHistoricoItem(item);
+    setHistoricoModal(true);
+    setHistoricoLoading(true);
+    try {
+      const codigoNum = parseInt(item.codigo_item, 10);
+      const response = await api.get(`/items/historico-compras/${codigoNum}`);
+      setHistoricoData(response.data);
+    } catch (error) {
+      console.error('Erro ao buscar histórico:', error);
+      setHistoricoData([]);
+    } finally {
+      setHistoricoLoading(false);
+    }
+  };
+
+  const fecharHistorico = () => {
+    setHistoricoModal(false);
+    setHistoricoData([]);
+    setHistoricoItem(null);
+  };
+
+  const formatCurrencyShort = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  };
 
   if (loading) {
     return (
@@ -379,7 +422,7 @@ const HistoricalAnalysisPage = () => {
                 </tr>
               ) : (
                 filteredItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
+                  <tr key={item.id} className="hover:bg-blue-50 cursor-pointer" onClick={() => abrirHistorico(item)}>
                     <td className="px-2 py-2 text-sm text-gray-600">{item.codigo_item}</td>
                     <td className="px-2 py-2 text-xs text-gray-600">{item.tipo}</td>
                     <td className="px-2 py-2 text-sm text-gray-900">{item.descricao}</td>
@@ -429,6 +472,109 @@ const HistoricalAnalysisPage = () => {
           </table>
         </div>
       </div>
+
+      {/* Modal Histórico de Compras */}
+      {historicoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+            {/* Header do Modal */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <div>
+                <h2 className="text-lg font-bold text-gray-800">Histórico de Compras</h2>
+                {historicoItem && (
+                  <p className="text-sm text-gray-500">
+                    {historicoItem.codigo_item} - {historicoItem.descricao}
+                  </p>
+                )}
+              </div>
+              <button onClick={fecharHistorico} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              {historicoLoading ? (
+                <div className="flex items-center justify-center h-48">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+                </div>
+              ) : historicoData.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Package size={40} className="mx-auto mb-3 text-gray-400" />
+                  <p>Nenhuma compra encontrada para este item.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Gráfico de Quantidade */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Quantidade por Compra</h3>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <LineChart data={historicoData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="data_entrada" tick={{ fontSize: 11 }} angle={-30} textAnchor="end" height={60} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <Tooltip
+                          formatter={(value: number, name: string) => {
+                            if (name === 'Quantidade') return [formatNumber(value), name];
+                            return [formatCurrencyShort(value), name];
+                          }}
+                          labelFormatter={(label) => `Data: ${label}`}
+                        />
+                        <Legend />
+                        <Line type="monotone" dataKey="quantidade" name="Quantidade" stroke="#2563eb" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Gráfico de Valor Unitário */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Valor Unitário por Compra</h3>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <LineChart data={historicoData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="data_entrada" tick={{ fontSize: 11 }} angle={-30} textAnchor="end" height={60} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <Tooltip
+                          formatter={(value: number) => [formatCurrencyShort(value), 'Valor Unitário']}
+                          labelFormatter={(label) => `Data: ${label}`}
+                        />
+                        <Legend />
+                        <Line type="monotone" dataKey="valor_unitario" name="Valor Unitário" stroke="#16a34a" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Tabela detalhada */}
+                  <div className="overflow-x-auto">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-2">Detalhamento</h3>
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fornecedor</th>
+                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Quantidade</th>
+                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Vlr. Unitário</th>
+                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Vlr. Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {historicoData.map((h, idx) => (
+                          <tr key={idx} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 text-gray-700">{h.data_entrada}</td>
+                            <td className="px-3 py-2 text-gray-600 text-xs">{h.fornecedor}</td>
+                            <td className="px-3 py-2 text-right font-medium">{formatNumber(h.quantidade)}</td>
+                            <td className="px-3 py-2 text-right text-gray-600">{formatCurrencyShort(h.valor_unitario)}</td>
+                            <td className="px-3 py-2 text-right font-semibold">{formatCurrencyShort(h.valor_total)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
