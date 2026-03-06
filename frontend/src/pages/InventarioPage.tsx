@@ -1,6 +1,41 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Package, Search, RefreshCw, CheckCircle, Clock, AlertTriangle, Trash2 } from 'lucide-react';
+import { Package, Search, RefreshCw, CheckCircle, Clock, AlertTriangle, Trash2, WifiOff, Wifi } from 'lucide-react';
 import api from '../services/api';
+
+interface PendingContagem {
+  inventarioId: string;
+  codigoItem: string;
+  contagem_fisica: number | null;
+  deposito: string;
+  timestamp: number;
+}
+
+const PENDING_KEY = 'inventario_pending_contagens';
+
+const getPendingQueue = (): PendingContagem[] => {
+  try {
+    const data = localStorage.getItem(PENDING_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+};
+
+const savePendingQueue = (queue: PendingContagem[]) => {
+  localStorage.setItem(PENDING_KEY, JSON.stringify(queue));
+};
+
+const addToPendingQueue = (item: PendingContagem) => {
+  const queue = getPendingQueue();
+  // Substituir se já existe para mesmo item+deposito
+  const idx = queue.findIndex(q => q.codigoItem === item.codigoItem && q.deposito === item.deposito);
+  if (idx >= 0) {
+    queue[idx] = item;
+  } else {
+    queue.push(item);
+  }
+  savePendingQueue(queue);
+};
 
 interface InventarioItem {
   codigo_item: string;
@@ -40,7 +75,57 @@ const InventarioPage = () => {
   const [abcFilter, setAbcFilter] = useState<'' | 'A' | 'B' | 'C'>('');
   const [abcMap, setAbcMap] = useState<Record<string, 'A' | 'B' | 'C'>>({});
   const [savingItem, setSavingItem] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [pendingCount, setPendingCount] = useState(getPendingQueue().length);
+  const [isSyncingOffline, setIsSyncingOffline] = useState(false);
   const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // Monitorar conexão
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Sync pendentes quando voltar online
+  useEffect(() => {
+    if (isOnline) {
+      syncPendingQueue();
+    }
+  }, [isOnline]);
+
+  const syncPendingQueue = async () => {
+    const queue = getPendingQueue();
+    if (queue.length === 0) return;
+
+    setIsSyncingOffline(true);
+    const failed: PendingContagem[] = [];
+
+    for (const item of queue) {
+      try {
+        await api.put(`/inventario/${item.inventarioId}/item/${item.codigoItem}`, {
+          contagem_fisica: item.contagem_fisica,
+          deposito: item.deposito
+        });
+      } catch {
+        failed.push(item);
+      }
+    }
+
+    savePendingQueue(failed);
+    setPendingCount(failed.length);
+    setIsSyncingOffline(false);
+
+    if (failed.length === 0 && queue.length > 0) {
+      // Recarregar inventário para garantir consistência
+      fetchInventario();
+    }
+  };
 
   useEffect(() => {
     fetchInventario();
@@ -181,8 +266,16 @@ const InventarioPage = () => {
         };
       });
     } catch (error) {
-      console.error('Erro ao salvar contagem:', error);
-      alert('Erro ao salvar contagem');
+      console.error('Erro ao salvar contagem (offline), salvando localmente:', error);
+      // Salvar na fila offline
+      addToPendingQueue({
+        inventarioId: inventario._id,
+        codigoItem,
+        contagem_fisica: value,
+        deposito: depositoFilter,
+        timestamp: Date.now()
+      });
+      setPendingCount(getPendingQueue().length);
     } finally {
       setSavingItem(null);
     }
@@ -280,12 +373,52 @@ const InventarioPage = () => {
 
   return (
     <div className="space-y-4">
+      {/* Banner Offline */}
+      {!isOnline && (
+        <div className="bg-orange-50 border border-orange-300 rounded-lg p-3 flex items-center space-x-3">
+          <WifiOff className="text-orange-600 flex-shrink-0" size={22} />
+          <div>
+            <p className="text-orange-800 font-medium text-sm">Sem conexão com a internet</p>
+            <p className="text-orange-600 text-xs">As contagens serão salvas localmente e enviadas automaticamente quando a conexão for restaurada.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Banner Sincronizando / Pendentes */}
+      {isOnline && pendingCount > 0 && (
+        <div className={`border rounded-lg p-3 flex items-center space-x-3 ${
+          isSyncingOffline ? 'bg-blue-50 border-blue-300' : 'bg-yellow-50 border-yellow-300'
+        }`}>
+          {isSyncingOffline ? (
+            <>
+              <RefreshCw className="text-blue-600 animate-spin flex-shrink-0" size={22} />
+              <p className="text-blue-800 font-medium text-sm">Sincronizando {pendingCount} contagem(ns) pendente(s)...</p>
+            </>
+          ) : (
+            <>
+              <AlertTriangle className="text-yellow-600 flex-shrink-0" size={22} />
+              <div className="flex items-center space-x-3">
+                <p className="text-yellow-800 font-medium text-sm">{pendingCount} contagem(ns) pendente(s) para sincronizar</p>
+                <button onClick={syncPendingQueue} className="text-xs bg-yellow-600 text-white px-3 py-1 rounded hover:bg-yellow-700">Sincronizar agora</button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center space-x-3">
           <Package className="text-blue-600" size={28} />
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Inventário</h1>
+            <div className="flex items-center space-x-2">
+              <h1 className="text-2xl font-bold text-gray-800">Inventário</h1>
+              {isOnline ? (
+                <Wifi size={18} className="text-green-500" />
+              ) : (
+                <WifiOff size={18} className="text-orange-500" />
+              )}
+            </div>
             {inventario && (
               <p className="text-sm text-gray-500">
                 Snapshot: {formatDate(inventario.data_snapshot)} • Por: {inventario.criado_por_nome}
