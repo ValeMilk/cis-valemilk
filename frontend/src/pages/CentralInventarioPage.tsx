@@ -370,15 +370,13 @@ const CentralInventarioPage = () => {
                 </>
               )}
               <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Contagem</th>
-              {depositoView === 'aberto' && (
-                <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Diferença</th>
-              )}
+              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Diferença</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {filteredItems.length === 0 ? (
               <tr>
-                <td colSpan={depositoView === 'aberto' ? 9 : 5} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={depositoView === 'aberto' ? 9 : 7} className="px-4 py-8 text-center text-gray-500">
                   Nenhum item encontrado
                 </td>
               </tr>
@@ -417,8 +415,7 @@ const CentralInventarioPage = () => {
                     <td className="px-3 py-2 text-sm text-right font-semibold">
                       {contagem !== null ? formatNumber(contagem) : <span className="text-gray-300">-</span>}
                     </td>
-                    {depositoView === 'aberto' && (
-                      <td className="px-3 py-2 text-sm text-right font-semibold">
+                    <td className="px-3 py-2 text-sm text-right font-semibold">
                         {diferenca !== null ? (
                           <span className={diferenca > 0 ? 'text-green-600' : diferenca < 0 ? 'text-red-600' : 'text-gray-500'}>
                             {diferenca > 0 ? '+' : ''}{formatNumber(diferenca)}
@@ -426,8 +423,7 @@ const CentralInventarioPage = () => {
                         ) : (
                           <span className="text-gray-300">-</span>
                         )}
-                      </td>
-                    )}
+                    </td>
                   </tr>
                 );
               })
@@ -512,9 +508,7 @@ const CentralInventarioPage = () => {
                   </>
                 )}
                 <th className="border border-gray-300 px-2 py-2 text-right">CONTAGEM</th>
-                {depositoView === 'aberto' && (
-                  <th className="border border-gray-300 px-2 py-2 text-right">DIFERENÇA</th>
-                )}
+                <th className="border border-gray-300 px-2 py-2 text-right">DIFERENÇA</th>
               </tr>
             </thead>
             <tbody>
@@ -544,14 +538,12 @@ const CentralInventarioPage = () => {
                     <td className="border border-gray-300 px-2 py-1 text-right font-semibold">
                       {contagem !== null ? formatNumber(contagem) : '-'}
                     </td>
-                    {depositoView === 'aberto' && (
-                      <td className={`border border-gray-300 px-2 py-1 text-right font-semibold ${
+                    <td className={`border border-gray-300 px-2 py-1 text-right font-semibold ${
                         diferenca !== null && diferenca > 0 ? 'text-green-600' :
                         diferenca !== null && diferenca < 0 ? 'text-red-600' : ''
                       }`}>
                         {diferenca !== null ? `${diferenca > 0 ? '+' : ''}${formatNumber(diferenca)}` : '-'}
-                      </td>
-                    )}
+                    </td>
                   </tr>
                 );
               })}

@@ -455,15 +455,13 @@ const InventarioPage = () => {
                     </>
                   )}
                   <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-36">Contagem</th>
-                  {depositoFilter === 'aberto' && (
-                    <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Diferença</th>
-                  )}
+                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Diferença</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredItems.length === 0 ? (
                   <tr>
-                    <td colSpan={depositoFilter === 'aberto' ? 10 : 7} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={depositoFilter === 'aberto' ? 10 : 8} className="px-4 py-8 text-center text-gray-500">
                       Nenhum item encontrado
                     </td>
                   </tr>
@@ -546,8 +544,7 @@ const InventarioPage = () => {
                             )}
                           </div>
                         </td>
-                        {depositoFilter === 'aberto' && (
-                          <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-semibold">
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-semibold">
                             {diferenca !== null ? (
                               <span className={diferenca > 0 ? 'text-green-600' : diferenca < 0 ? 'text-red-600' : 'text-gray-500'}>
                                 {diferenca > 0 ? '+' : ''}{formatNumber(diferenca)}
@@ -555,8 +552,7 @@ const InventarioPage = () => {
                             ) : (
                               <span className="text-gray-300">-</span>
                             )}
-                          </td>
-                        )}
+                        </td>
                       </tr>
                     );
                   })
