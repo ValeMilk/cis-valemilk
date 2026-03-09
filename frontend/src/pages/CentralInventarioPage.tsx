@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import { Archive, Search, Eye, Printer, Calendar, ChevronLeft } from 'lucide-react';
+import { Archive, Search, Eye, Printer, Calendar, ChevronLeft, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import api from '../services/api';
 
 interface InventarioResumo {
@@ -43,6 +43,8 @@ const CentralInventarioPage = () => {
   const [dataFim, setDataFim] = useState('');
   const [depositoView, setDepositoView] = useState('aberto');
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'todos' | 'contados' | 'com_divergencia' | 'sem_divergencia'>('todos');
+  const [sortDiferenca, setSortDiferenca] = useState<'none' | 'asc' | 'desc'>('none');
   const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -85,6 +87,8 @@ const CentralInventarioPage = () => {
     setDetalhe(null);
     setSearchTerm('');
     setDepositoView('aberto');
+    setStatusFilter('todos');
+    setSortDiferenca('none');
   };
 
   const handlePrint = useReactToPrint({
@@ -133,7 +137,57 @@ const CentralInventarioPage = () => {
         i.fornecedor.toLowerCase().includes(lower)
       );
     }
+
+    // Filtro de status
+    if (statusFilter === 'contados') {
+      items = items.filter(i => getContagem(i, depositoView) !== null);
+    } else if (statusFilter === 'com_divergencia') {
+      items = items.filter(i => {
+        const c = getContagem(i, depositoView);
+        if (c === null) return false;
+        return Math.abs(c - getSaldo(i, depositoView)) > 0.01;
+      });
+    } else if (statusFilter === 'sem_divergencia') {
+      items = items.filter(i => {
+        const c = getContagem(i, depositoView);
+        if (c === null) return false;
+        return Math.abs(c - getSaldo(i, depositoView)) <= 0.01;
+      });
+    }
+
+    // Ordenação por diferença
+    if (sortDiferenca !== 'none') {
+      items.sort((a, b) => {
+        const ca = getContagem(a, depositoView);
+        const cb = getContagem(b, depositoView);
+        const da = ca !== null ? ca - getSaldo(a, depositoView) : null;
+        const db = cb !== null ? cb - getSaldo(b, depositoView) : null;
+        // Itens sem contagem vão pro final
+        if (da === null && db === null) return 0;
+        if (da === null) return 1;
+        if (db === null) return -1;
+        return sortDiferenca === 'asc' ? da - db : db - da;
+      });
+    }
+
     return items;
+  };
+
+  const getStatusFilterLabel = (): string => {
+    switch (statusFilter) {
+      case 'contados': return 'Contados';
+      case 'com_divergencia': return 'Com Divergência';
+      case 'sem_divergencia': return 'Sem Divergência';
+      default: return 'Todos';
+    }
+  };
+
+  const toggleSortDiferenca = () => {
+    setSortDiferenca(prev => {
+      if (prev === 'none') return 'asc';
+      if (prev === 'asc') return 'desc';
+      return 'none';
+    });
   };
 
   const calcularABC = (itens: InventarioItem[]): Record<string, 'A' | 'B' | 'C'> => {
@@ -294,7 +348,7 @@ const CentralInventarioPage = () => {
 
       {/* Filtros do detalhe */}
       <div className="bg-white rounded-lg shadow p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
             <input
@@ -313,6 +367,16 @@ const CentralInventarioPage = () => {
             <option value="aberto">Dep. Aberto (Interno)</option>
             <option value="fechado_ext">Dep. Fechado (Externo)</option>
             <option value="fechado_int">Dep. Fechado (Interno)</option>
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as any)}
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="todos">Todos os Itens</option>
+            <option value="contados">Somente Contados</option>
+            <option value="com_divergencia">Com Divergência</option>
+            <option value="sem_divergencia">Sem Divergência</option>
           </select>
         </div>
       </div>
@@ -370,7 +434,17 @@ const CentralInventarioPage = () => {
                 </>
               )}
               <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Contagem</th>
-              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Diferença</th>
+              <th
+                className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 select-none"
+                onClick={toggleSortDiferenca}
+              >
+                <div className="flex items-center justify-end space-x-1">
+                  <span>Diferença</span>
+                  {sortDiferenca === 'none' && <ArrowUpDown size={14} className="text-gray-400" />}
+                  {sortDiferenca === 'asc' && <ArrowUp size={14} className="text-blue-600" />}
+                  {sortDiferenca === 'desc' && <ArrowDown size={14} className="text-blue-600" />}
+                </div>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -453,6 +527,12 @@ const CentralInventarioPage = () => {
                 <div className="text-sm text-gray-600">
                   Responsável: {detalhe.criado_por_nome}
                 </div>
+                {(statusFilter !== 'todos' || sortDiferenca !== 'none') && (
+                  <div className="text-sm text-blue-700 font-semibold mt-1">
+                    Filtro: {getStatusFilterLabel()}
+                    {sortDiferenca !== 'none' && ` | Ordenado por Diferença ${sortDiferenca === 'asc' ? '↑ (menor→maior)' : '↓ (maior→menor)'}`}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -486,6 +566,10 @@ const CentralInventarioPage = () => {
                   if (c === null) return false;
                   return Math.abs(c - getSaldo(i, depositoView)) > 0.01;
                 }).length}</strong></p>
+                <p>Filtro Aplicado: <strong>{getStatusFilterLabel()}</strong></p>
+                {sortDiferenca !== 'none' && (
+                  <p>Ordenação: <strong>Diferença {sortDiferenca === 'asc' ? '↑ (menor→maior)' : '↓ (maior→menor)'}</strong></p>
+                )}
               </div>
             </div>
           </div>
