@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Printer, Edit2, Save, X, Trash2 } from 'lucide-react';
+import { ArrowLeft, Printer, Edit2, Save, X, Trash2, Ban } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import api from '../services/api';
 import { Pedido, Fornecedor, StatusPedido, PerfilEnum } from '../types';
@@ -333,6 +333,25 @@ const PedidoDetailPage = () => {
            user.perfil === PerfilEnum.ADMIN;
   };
 
+  const canCancelPedido = () => {
+    if (!pedido || !user) return false;
+    if (pedido.status_atual === StatusPedido.APROVADO_DIRETORIA || pedido.status_atual === StatusPedido.CANCELADO) return false;
+    return user.perfil === PerfilEnum.COMPRADOR || user.perfil === PerfilEnum.DIRETORIA || user.perfil === PerfilEnum.ADMIN;
+  };
+
+  const handleCancelarPedido = async () => {
+    if (!pedido) return;
+    const motivo = prompt('Informe o motivo do cancelamento:');
+    if (!motivo) return;
+    try {
+      const response = await api.post(`/pedidos/${pedido._id}/cancelar`, { motivo });
+      setPedido(response.data);
+      alert('Pedido cancelado com sucesso!');
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Erro ao cancelar pedido');
+    }
+  };
+
   const getNextStatusLabel = () => {
     if (!pedido) return '';
     
@@ -432,6 +451,15 @@ const PedidoDetailPage = () => {
                   className="flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
                 >
                   {getNextStatusLabel()}
+                </button>
+              )}
+              {canCancelPedido() && (
+                <button
+                  onClick={handleCancelarPedido}
+                  className="flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  <Ban className="w-5 h-5" />
+                  Cancelar Pedido
                 </button>
               )}
               <button
