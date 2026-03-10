@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, LayoutDashboard, ShoppingCart, Package, Building2, Users, BarChart3, ClipboardList, Archive } from 'lucide-react';
+import { LogOut, LayoutDashboard, ShoppingCart, Package, Building2, Users, BarChart3, ClipboardList, Archive, PackageCheck } from 'lucide-react';
 import { PerfilEnum } from '../types';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -65,6 +65,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 >
                   <ClipboardList size={20} />
                   <span>Inventário</span>
+                </Link>
+              )}
+              {(user?.perfil === PerfilEnum.RECEBIMENTO || user?.perfil === PerfilEnum.ADMIN) && (
+                <Link
+                  to="/reposicao"
+                  className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
+                >
+                  <PackageCheck size={20} />
+                  <span>Reposição</span>
                 </Link>
               )}
               <Link

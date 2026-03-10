@@ -11,6 +11,7 @@ import FornecedoresPage from './pages/FornecedoresPage';
 import UsersPage from './pages/UsersPage';
 import InventarioPage from './pages/InventarioPage';
 import CentralInventarioPage from './pages/CentralInventarioPage';
+import ReposicaoPage from './pages/ReposicaoPage';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -123,6 +124,16 @@ function App() {
           <ProtectedRoute>
             <Layout>
               <CentralInventarioPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reposicao"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ReposicaoPage />
             </Layout>
           </ProtectedRoute>
         }
