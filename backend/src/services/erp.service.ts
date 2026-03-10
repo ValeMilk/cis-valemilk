@@ -650,93 +650,100 @@ export interface ERPReposicaoItem {
 
 export const getReposicaoQuery = (): string => {
   return `
-    WITH UltimoPorFornecedor AS (
-      SELECT
-          M01.M01_ID_E02,
-          E02.E02_DESC,
-          E02.E02_UM,
-          E02.E02_TIPO,
-          CASE E02.E02_TIPO
-              WHEN 0 THEN 'Mercadoria para Revenda'
-              WHEN 1 THEN 'Matéria Prima'
-              WHEN 2 THEN 'Embalagem'
-              WHEN 3 THEN 'Produto em Processo'
-              WHEN 4 THEN 'Produto Acabado'
-              WHEN 5 THEN 'Subproduto'
-              WHEN 6 THEN 'Produto Intermediário'
-              WHEN 7 THEN 'Material de Uso e Consumo'
-              WHEN 8 THEN 'Ativo Imobilizado'
-              WHEN 9 THEN 'Serviços'
-              WHEN 10 THEN 'Outros Insumos'
-              WHEN 99 THEN 'Outros'
-              ELSE 'Não Definido'
-          END AS TIPO_DESC,
-          ROW_NUMBER() OVER (
-              PARTITION BY M01.M01_ID_E02
-              ORDER BY M00.M00_ENTSAI DESC, M00.M00_ID DESC
-          ) AS rn
-      FROM M00
-      INNER JOIN M01 ON M00.M00_ID = M01.M01_ID_M00
-      INNER JOIN E02 ON E02.E02_ID = M01.M01_ID_E02
-      INNER JOIN E01 ON E01.E01_ID = E02.E02_ID_E01
-      WHERE M00.M00_DTLANC >= '2023-09-01'
-        AND M00.M00_ID_EMP IN (80, 81, 82)
-        AND (
-            M00.M00_STATUS = 'N' 
-            OR (M00.M00_STATUS = 'I' AND E02.E02_TIPO = 7)
-        )
-        AND E02.E02_TIPO IN (1, 2, 7, 10)
-        AND E02.E02_ATIVO = 1
-        AND E01.E01_DESC <> 'Outros'
-        AND M01.M01_ID_E02 <> 1 
-    ),
-    GiroEstoque AS (
-      SELECT 
-          P21.P21_ID_E02,
-          SUM(CASE WHEN DATEDIFF(DAY, P20.P20_DT_HR_FIM, GETDATE()) BETWEEN 0 AND 30 THEN P21.P21_REAL_QTD ELSE 0 END) AS GIRO_30_DIAS
-      FROM P21
-      INNER JOIN P20 ON P21.P21_ID_P20 = P20.P20_ID
-      WHERE DATEDIFF(DAY, P20.P20_DT_HR_FIM, GETDATE()) BETWEEN 0 AND 30
-        AND P20.P20_STATUS = 'F'
-        AND P21.P21_ID_E02 <> 1 
-      GROUP BY P21.P21_ID_E02
-    ),
-    EstoqueSaldo AS (
-      SELECT
-          E03_ID_E02,
-          SUM(CASE WHEN E03_ID_E00 = 1 THEN ISNULL(E03_SLDQTD, 0) ELSE 0 END) AS SALDO_DEP_1,
-          MAX(E03_MINQTD) AS MINIMO_QTD
-      FROM E03
-      WHERE E03_ID_E00 = 1
-        AND E03_ID_E02 <> 1 
-      GROUP BY E03_ID_E02
-    ),
-    ProducoesAberto AS (
-      SELECT 
-          a.P21_ID_E02,
-          SUM(a.P21_PREV_QTD) AS TOTAL_PREV_QTD
-      FROM P21 a
-      INNER JOIN P20 b 
-          ON a.P21_ID_P20 = b.P20_ID
-      WHERE b.P20_STATUS = 'A'
-      GROUP BY a.P21_ID_E02
-    )
+    -- Created by GitHub Copilot in SSMS - review carefully before executing
+WITH UltimoPorFornecedor AS (
     SELECT
-        upf.TIPO_DESC AS Tipo,
-        upf.M01_ID_E02 AS Cod,
-        upf.E02_DESC AS Descricao,
-        upf.E02_UM AS UN,
-        FORMAT(ISNULL(es.MINIMO_QTD, 0), 'N3', 'pt-BR') AS Minimo,
-        FORMAT(ISNULL(es.SALDO_DEP_1, 0), 'N3', 'pt-BR') AS [Dep. Aberto (Interno)],
-        FORMAT(ISNULL(pa.TOTAL_PREV_QTD, 0), 'N3', 'pt-BR') AS [Produções em Aberto],
-        FORMAT(ISNULL(es.SALDO_DEP_1, 0) - ISNULL(pa.TOTAL_PREV_QTD, 0), 'N3', 'pt-BR') AS [Saldo Real],
-        FORMAT(ISNULL(es.MINIMO_QTD, 0) - ISNULL(es.SALDO_DEP_1, 0), 'N3', 'pt-BR') AS [Reposição],
-        FORMAT(ISNULL(ge.GIRO_30_DIAS, 0), 'N3', 'pt-BR') AS [Giro Mensal]
-    FROM UltimoPorFornecedor upf
-    LEFT JOIN GiroEstoque ge ON upf.M01_ID_E02 = ge.P21_ID_E02
-    LEFT JOIN EstoqueSaldo es ON upf.M01_ID_E02 = es.E03_ID_E02
-    LEFT JOIN ProducoesAberto pa ON upf.M01_ID_E02 = pa.P21_ID_E02
-    WHERE upf.rn = 1 
-    ORDER BY Cod ASC;
+        M01.M01_ID_E02,
+        E02.E02_DESC,
+        E02.E02_UM,
+        E02.E02_TIPO,
+        
+        CASE E02.E02_TIPO
+            WHEN 0 THEN 'Mercadoria para Revenda'
+            WHEN 1 THEN 'Matéria Prima'
+            WHEN 2 THEN 'Embalagem'
+            WHEN 3 THEN 'Produto em Processo'
+            WHEN 4 THEN 'Produto Acabado'
+            WHEN 5 THEN 'Subproduto'
+            WHEN 6 THEN 'Produto Intermediário'
+            WHEN 7 THEN 'Material de Uso e Consumo'
+            WHEN 8 THEN 'Ativo Imobilizado'
+            WHEN 9 THEN 'Serviços'
+            WHEN 10 THEN 'Outros Insumos'
+            WHEN 99 THEN 'Outros'
+            ELSE 'Não Definido'
+        END AS TIPO_DESC,
+        
+        ROW_NUMBER() OVER (
+            PARTITION BY M01.M01_ID_E02
+            ORDER BY M00.M00_ENTSAI DESC, M00.M00_ID DESC
+        ) AS rn
+    FROM M00
+    INNER JOIN M01 ON M00.M00_ID = M01.M01_ID_M00
+    INNER JOIN E02 ON E02.E02_ID = M01.M01_ID_E02
+    INNER JOIN E01 ON E01.E01_ID = E02.E02_ID_E01
+    WHERE M00.M00_DTLANC >= '2023-09-01'
+      AND M00.M00_ID_EMP IN (80, 81, 82)
+      AND (
+          M00.M00_STATUS = 'N' 
+          OR (M00.M00_STATUS = 'I' AND E02.E02_TIPO = 7)
+      )
+      AND E02.E02_TIPO IN (1, 2, 7, 10)
+      AND E02.E02_ATIVO = 1
+      AND E01.E01_DESC <> 'Outros'
+      AND M01.M01_ID_E02 <> 1 
+),
+GiroEstoque AS (
+    SELECT 
+        P21.P21_ID_E02,
+        SUM(CASE WHEN DATEDIFF(DAY, P20.P20_DT_HR_FIM, GETDATE()) BETWEEN 0 AND 30 THEN P21.P21_REAL_QTD ELSE 0 END) AS GIRO_30_DIAS
+    FROM P21
+    INNER JOIN P20 ON P21.P21_ID_P20 = P20.P20_ID
+    WHERE DATEDIFF(DAY, P20.P20_DT_HR_FIM, GETDATE()) BETWEEN 0 AND 30
+      AND P20.P20_STATUS = 'F'
+      AND P21.P21_ID_E02 <> 1 
+    GROUP BY P21.P21_ID_E02
+),
+EstoqueSaldo AS (
+    SELECT
+        E03_ID_E02,
+        SUM(CASE WHEN E03_ID_E00 = 1 THEN ISNULL(E03_SLDQTD, 0) ELSE 0 END) AS SALDO_DEP_1,
+        MAX(E03_MINQTD) AS MINIMO_QTD
+    FROM E03
+    WHERE E03_ID_E00 = 1
+      AND E03_ID_E02 <> 1 
+    GROUP BY E03_ID_E02
+),
+ProducoesAberto AS (
+    SELECT 
+        a.P21_ID_E02,
+        SUM(a.P21_PREV_QTD) AS TOTAL_PREV_QTD
+    FROM P21 a
+    INNER JOIN P20 b 
+        ON a.P21_ID_P20 = b.P20_ID
+    WHERE b.P20_STATUS = 'A'
+    GROUP BY a.P21_ID_E02
+)
+SELECT
+    upf.TIPO_DESC AS Tipo,
+    upf.M01_ID_E02 AS Cod,
+    upf.E02_DESC AS Descricao,
+    upf.E02_UM AS UN,
+    
+    FORMAT(ISNULL(es.MINIMO_QTD, 0), 'N3', 'pt-BR') AS Minimo,
+    
+    FORMAT(ISNULL(es.SALDO_DEP_1, 0), 'N3', 'pt-BR') AS [Dep. Aberto (Interno)],
+    FORMAT(ISNULL(pa.TOTAL_PREV_QTD, 0), 'N3', 'pt-BR') AS [Produções em Aberto],
+    FORMAT(ISNULL(es.SALDO_DEP_1, 0) - ISNULL(pa.TOTAL_PREV_QTD, 0), 'N3', 'pt-BR') AS [Saldo Real],
+    FORMAT(ISNULL(es.MINIMO_QTD, 0) - (ISNULL(es.SALDO_DEP_1, 0) - ISNULL(pa.TOTAL_PREV_QTD, 0)), 'N3', 'pt-BR') AS [Reposição],
+    FORMAT(ISNULL(ge.GIRO_30_DIAS, 0), 'N3', 'pt-BR') AS [Giro Mensal]
+
+FROM UltimoPorFornecedor upf
+LEFT JOIN GiroEstoque ge ON upf.M01_ID_E02 = ge.P21_ID_E02
+LEFT JOIN EstoqueSaldo es ON upf.M01_ID_E02 = es.E03_ID_E02
+LEFT JOIN ProducoesAberto pa ON upf.M01_ID_E02 = pa.P21_ID_E02
+
+WHERE upf.rn = 1 
+ORDER BY Cod ASC;
   `;
 };
