@@ -12,6 +12,7 @@ import UsersPage from './pages/UsersPage';
 import InventarioPage from './pages/InventarioPage';
 import CentralInventarioPage from './pages/CentralInventarioPage';
 import ReposicaoPage from './pages/ReposicaoPage';
+import CentralReposicaoPage from './pages/CentralReposicaoPage';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -134,6 +135,16 @@ function App() {
           <ProtectedRoute>
             <Layout>
               <ReposicaoPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/central-reposicao"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <CentralReposicaoPage />
             </Layout>
           </ProtectedRoute>
         }

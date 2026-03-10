@@ -11,13 +11,59 @@ const parseFormattedNumber = (value: string): number => {
   return parseFloat(value.replace(/R\$\s*/g, '').replace(/\./g, '').replace(',', '.')) || 0;
 };
 
-// GET - Buscar último carregamento salvo
+// GET - Buscar último carregamento em andamento
 router.get('/latest', authMiddleware, async (_req, res) => {
   try {
-    const reposicao = await Reposicao.findOne().sort({ data_carregamento: -1 });
+    const reposicao = await Reposicao.findOne({ status: 'em_andamento' }).sort({ data_carregamento: -1 });
     if (!reposicao) {
       return res.json(null);
     }
+    res.json(reposicao);
+  } catch (error) {
+    console.error('❌ Erro ao buscar reposição:', error);
+    res.status(500).json({ message: 'Erro ao buscar reposição' });
+  }
+});
+
+// GET - Listar reposições finalizadas (para Central)
+router.get('/finalizados', authMiddleware, async (req, res) => {
+  try {
+    const { dataInicio, dataFim } = req.query;
+    const filtro: any = { status: 'finalizado' };
+    if (dataInicio || dataFim) {
+      filtro.data_carregamento = {};
+      if (dataInicio) filtro.data_carregamento.$gte = new Date(dataInicio as string);
+      if (dataFim) {
+        const fim = new Date(dataFim as string);
+        fim.setHours(23, 59, 59, 999);
+        filtro.data_carregamento.$lte = fim;
+      }
+    }
+    const reposicoes = await Reposicao.find(filtro)
+      .sort({ data_carregamento: -1 })
+      .select('data_carregamento carregado_por_nome itens');
+
+    const resumo = reposicoes.map(r => ({
+      _id: r._id,
+      data_carregamento: r.data_carregamento,
+      carregado_por_nome: r.carregado_por_nome,
+      total_itens: r.itens.length,
+      precisam_repor: r.itens.filter(i => i.reposicao > 0).length,
+      qtd_preenchida: r.itens.filter(i => i.quantidade !== null && i.quantidade !== undefined).length,
+    }));
+
+    res.json(resumo);
+  } catch (error) {
+    console.error('❌ Erro ao buscar finalizados:', error);
+    res.status(500).json({ message: 'Erro ao buscar reposições finalizadas' });
+  }
+});
+
+// GET - Buscar reposição por ID (detalhe)
+router.get('/:id', authMiddleware, async (req, res) => {
+  try {
+    const reposicao = await Reposicao.findById(req.params.id);
+    if (!reposicao) return res.status(404).json({ message: 'Reposição não encontrada' });
     res.json(reposicao);
   } catch (error) {
     console.error('❌ Erro ao buscar reposição:', error);
@@ -48,8 +94,8 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
       giro_mensal: parseFormattedNumber(item['Giro Mensal']),
     }));
 
-    // Salvar novo registro (substitui o anterior)
-    await Reposicao.deleteMany({});
+    // Salvar novo registro (remove apenas em_andamento anteriores)
+    await Reposicao.deleteMany({ status: 'em_andamento' });
     const reposicao = await Reposicao.create({
       data_carregamento: new Date(),
       carregado_por: user.id,

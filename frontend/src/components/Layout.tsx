@@ -83,6 +83,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <Archive size={20} />
                 <span>Central Inventário</span>
               </Link>
+              <Link
+                to="/central-reposicao"
+                className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
+              >
+                <PackageCheck size={20} />
+                <span>Central Reposição</span>
+              </Link>
               {user?.perfil === PerfilEnum.ADMIN && (
                 <Link
                   to="/usuarios"
