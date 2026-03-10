@@ -64,4 +64,42 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
   }
 });
 
+// PUT - Salvar quantidade de um item
+router.put('/:id/item/:codigoItem', authMiddleware, async (req, res) => {
+  try {
+    const { id, codigoItem } = req.params;
+    const { quantidade } = req.body;
+
+    const reposicao = await Reposicao.findById(id);
+    if (!reposicao) return res.status(404).json({ message: 'Reposição não encontrada' });
+    if (reposicao.status === 'finalizado') return res.status(400).json({ message: 'Reposição já finalizada' });
+
+    const item = reposicao.itens.find((i: any) => i.codigo_item === Number(codigoItem));
+    if (!item) return res.status(404).json({ message: 'Item não encontrado' });
+
+    (item as any).quantidade = quantidade;
+    await reposicao.save();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Erro ao salvar quantidade:', error);
+    res.status(500).json({ message: 'Erro ao salvar quantidade' });
+  }
+});
+
+// PUT - Finalizar reposição
+router.put('/:id/finalizar', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const reposicao = await Reposicao.findById(id);
+    if (!reposicao) return res.status(404).json({ message: 'Reposição não encontrada' });
+
+    reposicao.status = 'finalizado';
+    await reposicao.save();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Erro ao finalizar reposição:', error);
+    res.status(500).json({ message: 'Erro ao finalizar reposição' });
+  }
+});
+
 export default router;

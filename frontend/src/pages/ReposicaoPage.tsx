@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { RefreshCw, Search, PackageCheck, Clock, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useReactToPrint } from 'react-to-print';
+import { RefreshCw, Search, PackageCheck, Clock, ArrowUp, ArrowDown, ArrowUpDown, CheckCircle, Printer } from 'lucide-react';
 import api from '../services/api';
 
 interface ReposicaoItem {
@@ -13,16 +14,18 @@ interface ReposicaoItem {
   saldo_real: number;
   reposicao: number;
   giro_mensal: number;
+  quantidade: number | null;
 }
 
 interface Reposicao {
   _id: string;
   data_carregamento: string;
+  status: 'em_andamento' | 'finalizado';
   carregado_por_nome: string;
   itens: ReposicaoItem[];
 }
 
-type SortField = 'codigo_item' | 'minimo' | 'dep_aberto' | 'producoes_aberto' | 'saldo_real' | 'reposicao' | 'giro_mensal';
+type SortField = 'codigo_item' | 'minimo' | 'dep_aberto' | 'producoes_aberto' | 'saldo_real' | 'reposicao' | 'giro_mensal' | 'quantidade';
 type SortDir = 'none' | 'asc' | 'desc';
 
 const ReposicaoPage = () => {
@@ -34,6 +37,9 @@ const ReposicaoPage = () => {
   const [reposicaoFilter, setReposicaoFilter] = useState<'todos' | 'precisa_repor' | 'ok'>('todos');
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('none');
+  const [savingItem, setSavingItem] = useState<number | null>(null);
+  const debounceTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+  const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchLatest();
@@ -63,6 +69,59 @@ const ReposicaoPage = () => {
       setSyncing(false);
     }
   };
+
+  const saveQuantidade = useCallback(async (codigoItem: number, value: number | null) => {
+    if (!data) return;
+    setSavingItem(codigoItem);
+    try {
+      await api.put(`/reposicao/${data._id}/item/${codigoItem}`, { quantidade: value });
+    } catch (error) {
+      console.error('Erro ao salvar quantidade:', error);
+    } finally {
+      setSavingItem(null);
+    }
+  }, [data]);
+
+  const handleQuantidadeChange = (codigoItem: number, rawValue: string) => {
+    const value = rawValue === '' ? null : parseFloat(rawValue);
+    setData(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        itens: prev.itens.map(item =>
+          item.codigo_item === codigoItem ? { ...item, quantidade: value } : item
+        )
+      };
+    });
+    if (debounceTimers.current[codigoItem]) {
+      clearTimeout(debounceTimers.current[codigoItem]);
+    }
+    debounceTimers.current[codigoItem] = setTimeout(() => {
+      saveQuantidade(codigoItem, value);
+    }, 800);
+  };
+
+  const finalizarReposicao = async () => {
+    if (!data) return;
+    const semQtd = data.itens.filter(i => i.quantidade === null || i.quantidade === undefined).length;
+    const msg = semQtd > 0
+      ? `Existem ${semQtd} itens sem quantidade preenchida. Deseja finalizar mesmo assim?`
+      : 'Deseja finalizar a reposição?';
+    if (!confirm(msg)) return;
+    try {
+      await api.put(`/reposicao/${data._id}/finalizar`);
+      setData(prev => prev ? { ...prev, status: 'finalizado' } : prev);
+      alert('Reposição finalizada com sucesso!');
+    } catch (error) {
+      console.error('Erro ao finalizar:', error);
+      alert('Erro ao finalizar reposição');
+    }
+  };
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: data ? `Reposicao_${formatDateShort(data.data_carregamento)}` : 'Reposicao',
+  });
 
   const formatNumber = (num: number): string => {
     return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -113,8 +172,8 @@ const ReposicaoPage = () => {
 
     if (sortField && sortDir !== 'none') {
       items.sort((a, b) => {
-        const va = a[sortField] as number;
-        const vb = b[sortField] as number;
+        const va = (a[sortField] as number) ?? -Infinity;
+        const vb = (b[sortField] as number) ?? -Infinity;
         return sortDir === 'asc' ? va - vb : vb - va;
       });
     }
@@ -125,6 +184,7 @@ const ReposicaoPage = () => {
   const filteredItems = getFilteredItems();
   const tipos = data ? [...new Set(data.itens.map(i => i.tipo))].sort() : [];
   const precisamRepor = data ? data.itens.filter(i => i.reposicao > 0).length : 0;
+  const preenchidos = data ? data.itens.filter(i => i.quantidade !== null && i.quantidade !== undefined).length : 0;
 
   if (loading) {
     return (
@@ -150,15 +210,43 @@ const ReposicaoPage = () => {
             )}
           </div>
         </div>
-        <button
-          onClick={syncERP}
-          disabled={syncing}
-          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
-          <span>{syncing ? 'Carregando...' : 'Carregar ERP'}</span>
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={syncERP}
+            disabled={syncing || data?.status === 'finalizado'}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
+            <span>{syncing ? 'Carregando...' : 'Carregar ERP'}</span>
+          </button>
+          {data && (
+            <button
+              onClick={() => handlePrint()}
+              className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            >
+              <Printer size={18} />
+              <span>Exportar PDF</span>
+            </button>
+          )}
+          {data && data.status === 'em_andamento' && (
+            <button
+              onClick={finalizarReposicao}
+              className="flex items-center space-x-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+            >
+              <CheckCircle size={18} />
+              <span>Finalizar</span>
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Status Finalizado */}
+      {data?.status === 'finalizado' && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center space-x-3">
+          <CheckCircle className="text-green-600" size={24} />
+          <span className="text-green-800 font-medium">Reposição finalizada. Os dados são somente leitura.</span>
+        </div>
+      )}
 
       {!data ? (
         <div className="bg-white rounded-lg shadow p-8 text-center">
@@ -169,7 +257,7 @@ const ReposicaoPage = () => {
       ) : (
         <>
           {/* Resumo */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="bg-white rounded-lg shadow p-4 text-center">
               <p className="text-sm text-gray-500">Total Itens</p>
               <p className="text-2xl font-bold text-blue-600">{data.itens.length}</p>
@@ -181,6 +269,10 @@ const ReposicaoPage = () => {
             <div className="bg-white rounded-lg shadow p-4 text-center">
               <p className="text-sm text-gray-500">Estoque OK</p>
               <p className="text-2xl font-bold text-green-600">{data.itens.length - precisamRepor}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4 text-center">
+              <p className="text-sm text-gray-500">Qtd Preenchida</p>
+              <p className="text-2xl font-bold text-purple-600">{preenchidos}/{data.itens.length}</p>
             </div>
           </div>
 
@@ -222,59 +314,39 @@ const ReposicaoPage = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th
-                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 select-none"
-                    onClick={() => toggleSort('codigo_item')}
-                  >
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 select-none" onClick={() => toggleSort('codigo_item')}>
                     Código <SortIcon field="codigo_item" />
                   </th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descrição</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Tipo</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">UM</th>
-                  <th
-                    className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 select-none"
-                    onClick={() => toggleSort('minimo')}
-                  >
+                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 select-none" onClick={() => toggleSort('minimo')}>
                     Mínimo <SortIcon field="minimo" />
                   </th>
-                  <th
-                    className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 select-none"
-                    onClick={() => toggleSort('dep_aberto')}
-                  >
+                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 select-none" onClick={() => toggleSort('dep_aberto')}>
                     Dep. Aberto <SortIcon field="dep_aberto" />
                   </th>
-                  <th
-                    className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 select-none hidden md:table-cell"
-                    onClick={() => toggleSort('producoes_aberto')}
-                  >
+                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 select-none hidden md:table-cell" onClick={() => toggleSort('producoes_aberto')}>
                     Prod. Aberto <SortIcon field="producoes_aberto" />
                   </th>
-                  <th
-                    className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 select-none"
-                    onClick={() => toggleSort('saldo_real')}
-                  >
+                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 select-none" onClick={() => toggleSort('saldo_real')}>
                     Saldo Real <SortIcon field="saldo_real" />
                   </th>
-                  <th
-                    className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 select-none"
-                    onClick={() => toggleSort('reposicao')}
-                  >
+                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 select-none" onClick={() => toggleSort('reposicao')}>
                     Reposição <SortIcon field="reposicao" />
                   </th>
-                  <th
-                    className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 select-none hidden md:table-cell"
-                    onClick={() => toggleSort('giro_mensal')}
-                  >
+                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 select-none hidden md:table-cell" onClick={() => toggleSort('giro_mensal')}>
                     Giro Mensal <SortIcon field="giro_mensal" />
+                  </th>
+                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase w-36">
+                    Quantidade
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {filteredItems.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
-                      Nenhum item encontrado
-                    </td>
+                    <td colSpan={11} className="px-4 py-8 text-center text-gray-500">Nenhum item encontrado</td>
                   </tr>
                 ) : (
                   filteredItems.map((item) => (
@@ -289,25 +361,149 @@ const ReposicaoPage = () => {
                       <td className="px-3 py-2 text-sm text-right">{formatNumber(item.dep_aberto)}</td>
                       <td className="px-3 py-2 text-sm text-right hidden md:table-cell">{formatNumber(item.producoes_aberto)}</td>
                       <td className="px-3 py-2 text-sm text-right font-semibold text-blue-700">{formatNumber(item.saldo_real)}</td>
-                      <td className={`px-3 py-2 text-sm text-right font-bold ${
-                        item.reposicao > 0 ? 'text-red-600' : 'text-green-600'
-                      }`}>
+                      <td className={`px-3 py-2 text-sm text-right font-bold ${item.reposicao > 0 ? 'text-red-600' : 'text-green-600'}`}>
                         {item.reposicao > 0 ? '+' : ''}{formatNumber(item.reposicao)}
                       </td>
                       <td className="px-3 py-2 text-sm text-right hidden md:table-cell">{formatNumber(item.giro_mensal)}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <div className="flex items-center space-x-1">
+                          <input
+                            type="number"
+                            step="any"
+                            value={item.quantidade !== null && item.quantidade !== undefined ? item.quantidade : ''}
+                            onChange={(e) => handleQuantidadeChange(item.codigo_item, e.target.value)}
+                            disabled={data.status === 'finalizado'}
+                            className={`w-24 px-2 py-1 border rounded text-sm text-right focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                              data.status === 'finalizado' ? 'bg-gray-100 cursor-not-allowed' : ''
+                            }`}
+                            placeholder="-"
+                          />
+                          {savingItem === item.codigo_item && (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
+                          )}
+                          {item.quantidade !== null && item.quantidade !== undefined && savingItem !== item.codigo_item && (
+                            <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
-            <div className="px-4 py-3 bg-gray-50 text-sm text-gray-500">
-              Exibindo {filteredItems.length} de {data.itens.length} itens
+            <div className="px-4 py-3 bg-gray-50 text-sm text-gray-500 flex justify-between">
+              <span>Exibindo {filteredItems.length} de {data.itens.length} itens</span>
+              <span>{preenchidos} com quantidade</span>
             </div>
           </div>
         </>
       )}
+
+      {/* ===== PRINT VIEW (oculto) ===== */}
+      {data && (
+        <div style={{ display: 'none' }}>
+          <div ref={printRef} className="p-8 bg-white">
+            {/* Cabeçalho do PDF */}
+            <div className="border-b-4 border-blue-600 pb-6 mb-6">
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-4">
+                  <img src="/assets/valemilk-logo.png" alt="Vale Milk" className="h-16 w-auto" />
+                  <p className="text-sm text-gray-600">Relatório de Reposição</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-bold text-gray-800">Reposição de Estoque</div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    Data: {formatDate(data.data_carregamento)}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Responsável: {data.carregado_por_nome}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Status: {data.status === 'finalizado' ? 'Finalizado' : 'Em Andamento'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Info empresa no PDF */}
+            <div className="grid grid-cols-2 gap-6 mb-6">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Empresa</h3>
+                <div className="bg-gray-50 p-4 rounded">
+                  <p className="font-semibold text-gray-800">KM CACAU INDÚSTRIA E COMERCIO DE LATICINIOS LTDA</p>
+                  <p className="text-sm text-gray-600 mt-1">CNPJ: 02.518.353/0001-03</p>
+                  <p className="text-sm text-gray-600">AV. JUSCELINO KUBITSCHEK, S/N - OMBREIRA</p>
+                  <p className="text-sm text-gray-600">PENTECOSTE - CEARÁ</p>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Resumo</h3>
+                <div className="bg-gray-50 p-4 rounded text-sm">
+                  <p>Total de Itens: <strong>{filteredItems.length}</strong></p>
+                  <p>Precisam Repor: <strong className="text-red-600">{filteredItems.filter(i => i.reposicao > 0).length}</strong></p>
+                  <p>Qtd Preenchida: <strong>{filteredItems.filter(i => i.quantidade !== null && i.quantidade !== undefined).length}</strong></p>
+                  {reposicaoFilter !== 'todos' && (
+                    <p>Filtro: <strong>{reposicaoFilter === 'precisa_repor' ? 'Precisa Repor' : 'Estoque OK'}</strong></p>
+                  )}
+                  {tipoFilter && <p>Tipo: <strong>{tipoFilter}</strong></p>}
+                </div>
+              </div>
+            </div>
+
+            {/* Tabela para impressão */}
+            <table className="w-full border-collapse border border-gray-300 text-xs">
+              <thead>
+                <tr className="bg-blue-600 text-white">
+                  <th className="border border-gray-300 px-2 py-2 text-left">CÓDIGO</th>
+                  <th className="border border-gray-300 px-2 py-2 text-left">DESCRIÇÃO</th>
+                  <th className="border border-gray-300 px-2 py-2 text-center">UM</th>
+                  <th className="border border-gray-300 px-2 py-2 text-right">MÍNIMO</th>
+                  <th className="border border-gray-300 px-2 py-2 text-right">DEP. ABERTO</th>
+                  <th className="border border-gray-300 px-2 py-2 text-right">PROD. ABERTO</th>
+                  <th className="border border-gray-300 px-2 py-2 text-right">SALDO REAL</th>
+                  <th className="border border-gray-300 px-2 py-2 text-right">REPOSIÇÃO</th>
+                  <th className="border border-gray-300 px-2 py-2 text-right">GIRO MENSAL</th>
+                  <th className="border border-gray-300 px-2 py-2 text-right">QUANTIDADE</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredItems.map((item, index) => (
+                  <tr key={item.codigo_item} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    <td className="border border-gray-300 px-2 py-1">{String(item.codigo_item).padStart(6, '0')}</td>
+                    <td className="border border-gray-300 px-2 py-1">{item.descricao}</td>
+                    <td className="border border-gray-300 px-2 py-1 text-center">{item.unidade_medida}</td>
+                    <td className="border border-gray-300 px-2 py-1 text-right">{formatNumber(item.minimo)}</td>
+                    <td className="border border-gray-300 px-2 py-1 text-right">{formatNumber(item.dep_aberto)}</td>
+                    <td className="border border-gray-300 px-2 py-1 text-right">{formatNumber(item.producoes_aberto)}</td>
+                    <td className="border border-gray-300 px-2 py-1 text-right font-semibold">{formatNumber(item.saldo_real)}</td>
+                    <td className={`border border-gray-300 px-2 py-1 text-right font-semibold ${
+                      item.reposicao > 0 ? 'text-red-600' : 'text-green-600'
+                    }`}>
+                      {item.reposicao > 0 ? '+' : ''}{formatNumber(item.reposicao)}
+                    </td>
+                    <td className="border border-gray-300 px-2 py-1 text-right">{formatNumber(item.giro_mensal)}</td>
+                    <td className="border border-gray-300 px-2 py-1 text-right font-bold">
+                      {item.quantidade !== null && item.quantidade !== undefined ? formatNumber(item.quantidade) : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Rodapé do PDF */}
+            <div className="mt-6 text-center text-xs text-gray-500">
+              <p className="mt-1">Para mais informações, entre em contato: compras@valemilk.com.br</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
+function formatDateShort(dateStr: string): string {
+  const d = new Date(dateStr);
+  return `${d.getDate().toString().padStart(2, '0')}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getFullYear()}`;
+}
 
 export default ReposicaoPage;

@@ -11,10 +11,12 @@ export interface IReposicaoItem {
   saldo_real: number;
   reposicao: number;
   giro_mensal: number;
+  quantidade: number | null;
 }
 
 export interface IReposicao extends Document {
   data_carregamento: Date;
+  status: 'em_andamento' | 'finalizado';
   carregado_por: string;
   carregado_por_nome: string;
   itens: IReposicaoItem[];
@@ -33,10 +35,12 @@ const ReposicaoItemSchema = new Schema({
   saldo_real: { type: Number, default: 0 },
   reposicao: { type: Number, default: 0 },
   giro_mensal: { type: Number, default: 0 },
+  quantidade: { type: Number, default: null },
 });
 
 const ReposicaoSchema = new Schema({
   data_carregamento: { type: Date, required: true },
+  status: { type: String, enum: ['em_andamento', 'finalizado'], default: 'em_andamento' },
   carregado_por: { type: String, required: true },
   carregado_por_nome: { type: String, required: true },
   itens: [ReposicaoItemSchema]
