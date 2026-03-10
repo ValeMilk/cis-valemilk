@@ -425,7 +425,7 @@ export const getInventarioQuery = (): string => {
               M00.M00_STATUS = 'N' 
               OR (M00.M00_STATUS = 'I' AND E02.E02_TIPO = 7)
           )
-          AND E02.E02_TIPO IN (1, 2, 7, 10)
+          AND E02.E02_TIPO IN (1, 2, 4, 7, 10)
           AND E02.E02_ATIVO = 1
           AND E01.E01_DESC <> 'Outros'
           AND M01.M01_ID_E02 <> 1 
@@ -453,8 +453,6 @@ export const getInventarioQuery = (): string => {
     )
     SELECT
         upf.TIPO_DESC AS Tipo,
-        upf.Id_Fornecedor, 
-        upf.FORNECEDOR AS Fornecedor,
         upf.M01_ID_E02 AS Cod,
         upf.E02_DESC AS Descricao,
         upf.E02_UM AS UM,
@@ -476,8 +474,6 @@ export const getInventarioQuery = (): string => {
 
 export interface ERPInventarioItem {
   Tipo: string;
-  Id_Fornecedor: number | null;
-  Fornecedor: string;
   Cod: number;
   Descricao: string;
   UM: string;
