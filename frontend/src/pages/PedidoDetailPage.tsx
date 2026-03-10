@@ -371,7 +371,10 @@ const PedidoDetailPage = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+    if (!dateString) return '';
+    // Se for só data (YYYY-MM-DD), adiciona T12:00:00 para evitar problema de fuso
+    const safeDate = dateString.length === 10 ? dateString + 'T12:00:00' : dateString;
+    return new Date(safeDate).toLocaleDateString('pt-BR');
   };
 
   const formatDateTime = (dateString: string) => {

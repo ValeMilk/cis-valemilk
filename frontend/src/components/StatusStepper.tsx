@@ -43,7 +43,8 @@ const StatusStepper: React.FC<StatusStepperProps> = ({
     
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
-    const data = new Date(dataString);
+    const safeDate = dataString.length === 10 ? dataString + 'T12:00:00' : dataString;
+    const data = new Date(safeDate);
     data.setHours(0, 0, 0, 0);
     const diffTime = data.getTime() - hoje.getTime();
     const diasRestantes = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -53,7 +54,7 @@ const StatusStepper: React.FC<StatusStepperProps> = ({
   };
 
   const infoPrevisaoFaturamento = calcularDiasRestantes(dataPrevisaoFaturamento);
-  const infoFaturamento = dataFaturamento ? { dataFormatada: new Date(dataFaturamento).toLocaleDateString('pt-BR') } : null;
+  const infoFaturamento = dataFaturamento ? { dataFormatada: new Date(dataFaturamento.length === 10 ? dataFaturamento + 'T12:00:00' : dataFaturamento).toLocaleDateString('pt-BR') } : null;
   const infoEntrega = calcularDiasRestantes(dataEntregaPrevista);
 
   return (

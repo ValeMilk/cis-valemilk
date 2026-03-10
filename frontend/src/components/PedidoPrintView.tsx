@@ -8,7 +8,9 @@ interface PedidoPrintViewProps {
 const PedidoPrintView = forwardRef<HTMLDivElement, PedidoPrintViewProps>(
   ({ pedido }, ref) => {
     const formatDate = (dateString: string) => {
-      return new Date(dateString).toLocaleDateString('pt-BR');
+      if (!dateString) return '';
+      const safeDate = dateString.length === 10 ? dateString + 'T12:00:00' : dateString;
+      return new Date(safeDate).toLocaleDateString('pt-BR');
     };
 
     return (
