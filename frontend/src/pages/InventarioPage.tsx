@@ -53,6 +53,7 @@ interface InventarioItem {
   contagem_fechado_int: number | null;
   contagem_data?: string;
   contagem_usuario?: string;
+  observacao?: string;
 }
 
 interface Inventario {
@@ -79,6 +80,7 @@ const InventarioPage = () => {
   const [pendingCount, setPendingCount] = useState(getPendingQueue().length);
   const [isSyncingOffline, setIsSyncingOffline] = useState(false);
   const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const debounceObsTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   // Monitorar conexão
   useEffect(() => {
@@ -304,6 +306,29 @@ const InventarioPage = () => {
     }
     debounceTimers.current[codigoItem] = setTimeout(() => {
       saveContagem(codigoItem, value);
+    }, 800);
+  };
+
+  const handleObservacaoChange = (codigoItem: string, value: string) => {
+    setInventario(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        itens: prev.itens.map(item =>
+          item.codigo_item === codigoItem ? { ...item, observacao: value } : item
+        )
+      };
+    });
+    if (debounceObsTimers.current[codigoItem]) {
+      clearTimeout(debounceObsTimers.current[codigoItem]);
+    }
+    debounceObsTimers.current[codigoItem] = setTimeout(async () => {
+      if (!inventario) return;
+      try {
+        await api.put(`/inventario/${inventario._id}/item/${codigoItem}/observacao`, { observacao: value });
+      } catch (error) {
+        console.error('Erro ao salvar observação:', error);
+      }
     }, 800);
   };
 
@@ -589,12 +614,13 @@ const InventarioPage = () => {
                   )}
                   <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-36">Contagem</th>
                   <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Diferença</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observações</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredItems.length === 0 ? (
                   <tr>
-                    <td colSpan={depositoFilter === 'aberto' ? 10 : 8} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={depositoFilter === 'aberto' ? 11 : 9} className="px-4 py-8 text-center text-gray-500">
                       Nenhum item encontrado
                     </td>
                   </tr>
@@ -685,6 +711,18 @@ const InventarioPage = () => {
                             ) : (
                               <span className="text-gray-300">-</span>
                             )}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <input
+                            type="text"
+                            value={item.observacao || ''}
+                            onChange={(e) => handleObservacaoChange(item.codigo_item, e.target.value)}
+                            disabled={inventario.status === 'finalizado'}
+                            className={`w-40 px-2 py-1 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                              inventario.status === 'finalizado' ? 'bg-gray-100 cursor-not-allowed' : ''
+                            }`}
+                            placeholder="Obs..."
+                          />
                         </td>
                       </tr>
                     );

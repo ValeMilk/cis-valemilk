@@ -71,16 +71,18 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
     
     if (inventarioExistente) {
       // Preservar contagens já feitas
-      const contagensMap = new Map<string, { aberto: number | null; fechado_ext: number | null; fechado_int: number | null; data?: Date; usuario?: string }>();
+      const contagensMap = new Map<string, { aberto: number | null; fechado_ext: number | null; fechado_int: number | null; data?: Date; usuario?: string; observacao?: string }>();
       for (const item of inventarioExistente.itens) {
         const temContagem = (item as any).contagem_aberto !== null || (item as any).contagem_fechado_ext !== null || (item as any).contagem_fechado_int !== null;
-        if (temContagem) {
+        const temObs = (item as any).observacao && (item as any).observacao.trim() !== '';
+        if (temContagem || temObs) {
           contagensMap.set(item.codigo_item, {
             aberto: (item as any).contagem_aberto,
             fechado_ext: (item as any).contagem_fechado_ext,
             fechado_int: (item as any).contagem_fechado_int,
             data: item.contagem_data,
-            usuario: item.contagem_usuario
+            usuario: item.contagem_usuario,
+            observacao: (item as any).observacao
           });
         }
       }
@@ -129,7 +131,7 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
 router.put('/:inventarioId/item/:codigoItem', authMiddleware, async (req, res) => {
   try {
     const { inventarioId, codigoItem } = req.params;
-    const { contagem_fisica, deposito } = req.body;
+    const { contagem_fisica, deposito, observacao } = req.body;
     const user = (req as any).user;
     
     const inventario = await Inventario.findById(inventarioId);
@@ -161,6 +163,10 @@ router.put('/:inventarioId/item/:codigoItem', authMiddleware, async (req, res) =
       return res.status(400).json({ message: 'Depósito inválido' });
     }
     
+    if (observacao !== undefined) {
+      (item as any).observacao = observacao;
+    }
+    
     item.contagem_data = new Date();
     item.contagem_usuario = user.id;
     
@@ -170,6 +176,28 @@ router.put('/:inventarioId/item/:codigoItem', authMiddleware, async (req, res) =
   } catch (error) {
     console.error('❌ Erro ao salvar contagem:', error);
     res.status(500).json({ message: 'Erro ao salvar contagem' });
+  }
+});
+
+// PUT - Salvar observação de um item
+router.put('/:inventarioId/item/:codigoItem/observacao', authMiddleware, async (req, res) => {
+  try {
+    const { inventarioId, codigoItem } = req.params;
+    const { observacao } = req.body;
+
+    const inventario = await Inventario.findById(inventarioId);
+    if (!inventario) return res.status(404).json({ message: 'Inventário não encontrado' });
+    if (inventario.status !== 'em_andamento') return res.status(400).json({ message: 'Inventário já finalizado' });
+
+    const item = inventario.itens.find(i => i.codigo_item === codigoItem);
+    if (!item) return res.status(404).json({ message: 'Item não encontrado' });
+
+    (item as any).observacao = observacao || '';
+    await inventario.save();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Erro ao salvar observação:', error);
+    res.status(500).json({ message: 'Erro ao salvar observação' });
   }
 });
 

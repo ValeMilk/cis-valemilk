@@ -16,6 +16,7 @@ export interface IInventarioItem {
   contagem_fechado_int: number | null;
   contagem_data?: Date;
   contagem_usuario?: string;
+  observacao?: string;
 }
 
 export interface IInventario extends Document {
@@ -43,7 +44,8 @@ const InventarioItemSchema = new Schema({
   contagem_fechado_ext: { type: Number, default: null },
   contagem_fechado_int: { type: Number, default: null },
   contagem_data: { type: Date },
-  contagem_usuario: { type: String }
+  contagem_usuario: { type: String },
+  observacao: { type: String, default: '' }
 });
 
 const InventarioSchema = new Schema({

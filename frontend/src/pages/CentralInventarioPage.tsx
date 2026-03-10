@@ -25,6 +25,7 @@ interface InventarioItem {
   contagem_aberto: number | null;
   contagem_fechado_ext: number | null;
   contagem_fechado_int: number | null;
+  observacao?: string;
 }
 
 interface InventarioDetalhe {
@@ -445,12 +446,13 @@ const CentralInventarioPage = () => {
                   {sortDiferenca === 'desc' && <ArrowDown size={14} className="text-blue-600" />}
                 </div>
               </th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Observações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {filteredItems.length === 0 ? (
               <tr>
-                <td colSpan={depositoView === 'aberto' ? 9 : 7} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={depositoView === 'aberto' ? 10 : 8} className="px-4 py-8 text-center text-gray-500">
                   Nenhum item encontrado
                 </td>
               </tr>
@@ -498,6 +500,7 @@ const CentralInventarioPage = () => {
                           <span className="text-gray-300">-</span>
                         )}
                     </td>
+                    <td className="px-3 py-2 text-sm text-gray-600 max-w-xs truncate" title={item.observacao || ''}>{item.observacao || '-'}</td>
                   </tr>
                 );
               })
@@ -593,6 +596,7 @@ const CentralInventarioPage = () => {
                 )}
                 <th className="border border-gray-300 px-2 py-2 text-right">CONTAGEM</th>
                 <th className="border border-gray-300 px-2 py-2 text-right">DIFERENÇA</th>
+                <th className="border border-gray-300 px-2 py-2 text-left">OBSERVAÇÕES</th>
               </tr>
             </thead>
             <tbody>
@@ -628,6 +632,7 @@ const CentralInventarioPage = () => {
                       }`}>
                         {diferenca !== null ? `${diferenca > 0 ? '+' : ''}${formatNumber(diferenca)}` : '-'}
                     </td>
+                    <td className="border border-gray-300 px-2 py-1">{item.observacao || '-'}</td>
                   </tr>
                 );
               })}
