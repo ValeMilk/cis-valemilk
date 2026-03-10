@@ -614,7 +614,7 @@ const InventarioPage = () => {
                   )}
                   <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-36">Contagem</th>
                   <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Diferença</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[160px]">Observações</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Obs.</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -712,13 +712,13 @@ const InventarioPage = () => {
                               <span className="text-gray-300">-</span>
                             )}
                         </td>
-                        <td className="px-3 py-2">
+                        <td className="px-2 py-2">
                           <input
                             type="text"
                             value={item.observacao || ''}
                             onChange={(e) => handleObservacaoChange(item.codigo_item, e.target.value)}
                             disabled={inventario.status === 'finalizado'}
-                            className={`w-full min-w-[140px] px-2 py-1 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                            className={`w-24 px-1 py-1 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                               inventario.status === 'finalizado' ? 'bg-gray-100 cursor-not-allowed' : ''
                             }`}
                             placeholder="Obs..."
