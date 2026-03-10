@@ -217,13 +217,13 @@ router.post('/:id/aguardando-faturamento', authMiddleware, requireRole(PerfilEnu
 
     const user = await User.findById(req.user!.id);
     pedido.status_atual = StatusPedido.AGUARDANDO_FATURAMENTO;
-    pedido.data_previsao_faturamento = new Date(req.body.data_previsao_faturamento);
+    pedido.data_previsao_faturamento = new Date(req.body.data_previsao_faturamento + 'T12:00:00');
     pedido.historico_status.push({
       status: StatusPedido.AGUARDANDO_FATURAMENTO,
       usuario_id: user!._id,
       usuario_nome: user!.nome,
       data: new Date(),
-      observacao: req.body.observacao || `Previsão de faturamento: ${new Date(req.body.data_previsao_faturamento).toLocaleDateString('pt-BR')}`
+      observacao: req.body.observacao || `Previsão de faturamento: ${new Date(req.body.data_previsao_faturamento + 'T12:00:00').toLocaleDateString('pt-BR')}`
     });
 
     await pedido.save();
@@ -259,14 +259,14 @@ router.post('/:id/faturado', authMiddleware, requireRole(PerfilEnum.COMPRADOR, P
     const user = await User.findById(req.user!.id);
     pedido.status_atual = StatusPedido.FATURADO;
     pedido.numero_nota_fiscal = req.body.numero_nota_fiscal;
-    pedido.data_faturamento = new Date(req.body.data_faturamento);
+    pedido.data_faturamento = new Date(req.body.data_faturamento + 'T12:00:00');
     pedido.valor_nota_fiscal = req.body.valor_nota_fiscal;
     pedido.historico_status.push({
       status: StatusPedido.FATURADO,
       usuario_id: user!._id,
       usuario_nome: user!.nome,
       data: new Date(),
-      observacao: req.body.observacao || `NF: ${req.body.numero_nota_fiscal} - Faturado em ${new Date(req.body.data_faturamento).toLocaleDateString('pt-BR')} - Valor: R$ ${req.body.valor_nota_fiscal.toFixed(2)}`
+      observacao: req.body.observacao || `NF: ${req.body.numero_nota_fiscal} - Faturado em ${new Date(req.body.data_faturamento + 'T12:00:00').toLocaleDateString('pt-BR')} - Valor: R$ ${req.body.valor_nota_fiscal.toFixed(2)}`
     });
 
     await pedido.save();
@@ -295,13 +295,13 @@ router.post('/:id/em-rota', authMiddleware, requireRole(PerfilEnum.COMPRADOR, Pe
 
     const user = await User.findById(req.user!.id);
     pedido.status_atual = StatusPedido.EM_ROTA;
-    pedido.data_prevista_entrega = new Date(req.body.data_prevista_entrega);
+    pedido.data_prevista_entrega = new Date(req.body.data_prevista_entrega + 'T12:00:00');
     pedido.historico_status.push({
       status: StatusPedido.EM_ROTA,
       usuario_id: user!._id,
       usuario_nome: user!.nome,
       data: new Date(),
-      observacao: req.body.observacao || `Data de entrega prevista: ${new Date(req.body.data_prevista_entrega).toLocaleDateString('pt-BR')}`
+      observacao: req.body.observacao || `Data de entrega prevista: ${new Date(req.body.data_prevista_entrega + 'T12:00:00').toLocaleDateString('pt-BR')}`
     });
 
     await pedido.save();
