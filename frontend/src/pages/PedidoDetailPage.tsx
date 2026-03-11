@@ -39,6 +39,16 @@ const PedidoDetailPage = () => {
   const [observacoes, setObservacoes] = useState('');
   const [itensEditaveis, setItensEditaveis] = useState<any[]>([]);
 
+  // Estados para edição de acompanhamento
+  const [showEditPrevisaoModal, setShowEditPrevisaoModal] = useState(false);
+  const [editPrevisaoFaturamento, setEditPrevisaoFaturamento] = useState('');
+  const [showEditFaturadoModal, setShowEditFaturadoModal] = useState(false);
+  const [editNumeroNF, setEditNumeroNF] = useState('');
+  const [editDataFaturamento, setEditDataFaturamento] = useState('');
+  const [editValorNF, setEditValorNF] = useState('');
+  const [showEditEntregaModal, setShowEditEntregaModal] = useState(false);
+  const [editDataEntrega, setEditDataEntrega] = useState('');
+
   const locaisEntrega = {
     Matriz: {
       endereco: 'AV. JUSCELINO KUBITSCHEK, S/N - OMBREIRA, PENTECOSTE - CEARÁ',
@@ -352,6 +362,75 @@ const PedidoDetailPage = () => {
     }
   };
 
+  const canEditAcompanhamento = () => {
+    if (!pedido || !user) return false;
+    if (pedido.status_atual === StatusPedido.CANCELADO) return false;
+    return user.perfil === PerfilEnum.COMPRADOR || user.perfil === PerfilEnum.DIRETORIA || user.perfil === PerfilEnum.ADMIN;
+  };
+
+  const handleOpenEditPrevisao = () => {
+    if (!pedido?.data_previsao_faturamento) return;
+    const d = new Date(pedido.data_previsao_faturamento);
+    setEditPrevisaoFaturamento(d.toISOString().split('T')[0]);
+    setShowEditPrevisaoModal(true);
+  };
+
+  const handleOpenEditFaturamento = () => {
+    if (!pedido) return;
+    setEditNumeroNF(pedido.numero_nota_fiscal || '');
+    const d = pedido.data_faturamento ? new Date(pedido.data_faturamento) : null;
+    setEditDataFaturamento(d ? d.toISOString().split('T')[0] : '');
+    setEditValorNF(pedido.valor_nota_fiscal ? String(pedido.valor_nota_fiscal) : '');
+    setShowEditFaturadoModal(true);
+  };
+
+  const handleOpenEditEntrega = () => {
+    if (!pedido?.data_prevista_entrega) return;
+    const d = new Date(pedido.data_prevista_entrega);
+    setEditDataEntrega(d.toISOString().split('T')[0]);
+    setShowEditEntregaModal(true);
+  };
+
+  const handleSalvarEditPrevisao = async () => {
+    if (!editPrevisaoFaturamento) { alert('Informe a data'); return; }
+    try {
+      await api.put(`/pedidos/${id}/editar-acompanhamento`, { data_previsao_faturamento: editPrevisaoFaturamento });
+      alert('Previsão de faturamento atualizada!');
+      setShowEditPrevisaoModal(false);
+      fetchPedido();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Erro ao editar');
+    }
+  };
+
+  const handleSalvarEditFaturamento = async () => {
+    if (!editNumeroNF || !editDataFaturamento || !editValorNF) { alert('Preencha todos os campos'); return; }
+    try {
+      await api.put(`/pedidos/${id}/editar-acompanhamento`, {
+        numero_nota_fiscal: editNumeroNF,
+        data_faturamento: editDataFaturamento,
+        valor_nota_fiscal: parseFloat(editValorNF)
+      });
+      alert('Dados de faturamento atualizados!');
+      setShowEditFaturadoModal(false);
+      fetchPedido();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Erro ao editar');
+    }
+  };
+
+  const handleSalvarEditEntrega = async () => {
+    if (!editDataEntrega) { alert('Informe a data'); return; }
+    try {
+      await api.put(`/pedidos/${id}/editar-acompanhamento`, { data_prevista_entrega: editDataEntrega });
+      alert('Data de entrega atualizada!');
+      setShowEditEntregaModal(false);
+      fetchPedido();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Erro ao editar');
+    }
+  };
+
   const getNextStatusLabel = () => {
     if (!pedido) return '';
     
@@ -588,6 +667,10 @@ const PedidoDetailPage = () => {
                 numeroNotaFiscal={pedido.numero_nota_fiscal}
                 dataFaturamento={pedido.data_faturamento}
                 dataEntregaPrevista={pedido.data_prevista_entrega}
+                canEditAcompanhamento={canEditAcompanhamento()}
+                onEditPrevisao={handleOpenEditPrevisao}
+                onEditFaturamento={handleOpenEditFaturamento}
+                onEditEntrega={handleOpenEditEntrega}
               />
             </div>
           )}
@@ -973,6 +1056,124 @@ const PedidoDetailPage = () => {
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para editar previsão de faturamento */}
+      {showEditPrevisaoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Editar Previsão de Faturamento
+            </h3>
+            <input
+              type="date"
+              value={editPrevisaoFaturamento}
+              onChange={(e) => setEditPrevisaoFaturamento(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4"
+            />
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowEditPrevisaoModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSalvarEditPrevisao}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para editar dados de faturamento */}
+      {showEditFaturadoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Editar Dados do Faturamento
+            </h3>
+            <div className="space-y-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Número da Nota Fiscal</label>
+                <input
+                  type="text"
+                  value={editNumeroNF}
+                  onChange={(e) => setEditNumeroNF(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Data de Faturamento</label>
+                <input
+                  type="date"
+                  value={editDataFaturamento}
+                  onChange={(e) => setEditDataFaturamento(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Valor da Nota Fiscal</label>
+                <input
+                  type="number"
+                  value={editValorNF}
+                  onChange={(e) => setEditValorNF(e.target.value)}
+                  step="0.01"
+                  min="0"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowEditFaturadoModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSalvarEditFaturamento}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para editar data de entrega */}
+      {showEditEntregaModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Editar Data de Entrega Prevista
+            </h3>
+            <input
+              type="date"
+              value={editDataEntrega}
+              onChange={(e) => setEditDataEntrega(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4"
+            />
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowEditEntregaModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSalvarEditEntrega}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Salvar
               </button>
             </div>
           </div>

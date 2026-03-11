@@ -1,4 +1,5 @@
 import React from 'react';
+import { Pencil } from 'lucide-react';
 import { StatusPedido } from '../types';
 
 interface StatusStepperProps {
@@ -7,6 +8,10 @@ interface StatusStepperProps {
   numeroNotaFiscal?: string;
   dataFaturamento?: string;
   dataEntregaPrevista?: string;
+  canEditAcompanhamento?: boolean;
+  onEditPrevisao?: () => void;
+  onEditFaturamento?: () => void;
+  onEditEntrega?: () => void;
 }
 
 const StatusStepper: React.FC<StatusStepperProps> = ({ 
@@ -14,7 +19,11 @@ const StatusStepper: React.FC<StatusStepperProps> = ({
   dataPrevisaoFaturamento,
   numeroNotaFiscal,
   dataFaturamento,
-  dataEntregaPrevista 
+  dataEntregaPrevista,
+  canEditAcompanhamento,
+  onEditPrevisao,
+  onEditFaturamento,
+  onEditEntrega
 }) => {
   const steps = [
     { status: StatusPedido.ANALISE_COTACAO, label: 'Análise de Cotação' },
@@ -74,9 +83,16 @@ const StatusStepper: React.FC<StatusStepperProps> = ({
             {/* Mostrar data de previsão no passo "Aguardando Faturamento" */}
             {step.status === StatusPedido.AGUARDANDO_FATURAMENTO && dataPrevisaoFaturamento && infoPrevisaoFaturamento && (
               <div className="mt-2 text-center">
-                <p className="text-xs text-blue-700 font-semibold">
-                  📅 {infoPrevisaoFaturamento.dataFormatada}
-                </p>
+                <div className="flex items-center justify-center gap-1">
+                  <p className="text-xs text-blue-700 font-semibold">
+                    📅 {infoPrevisaoFaturamento.dataFormatada}
+                  </p>
+                  {canEditAcompanhamento && onEditPrevisao && (
+                    <button onClick={onEditPrevisao} className="text-blue-500 hover:text-blue-700" title="Editar previsão">
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
                 <p className={`text-xs font-bold mt-0.5 ${
                   infoPrevisaoFaturamento.diasRestantes < 0 
                     ? 'text-red-600' 
@@ -97,9 +113,16 @@ const StatusStepper: React.FC<StatusStepperProps> = ({
             {/* Mostrar dados de faturamento no passo "Faturado" */}
             {step.status === StatusPedido.FATURADO && numeroNotaFiscal && infoFaturamento && (
               <div className="mt-2 text-center">
-                <p className="text-xs text-purple-700 font-semibold">
-                  📄 NF: {numeroNotaFiscal}
-                </p>
+                <div className="flex items-center justify-center gap-1">
+                  <p className="text-xs text-purple-700 font-semibold">
+                    📄 NF: {numeroNotaFiscal}
+                  </p>
+                  {canEditAcompanhamento && onEditFaturamento && (
+                    <button onClick={onEditFaturamento} className="text-purple-500 hover:text-purple-700" title="Editar faturamento">
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
                 <p className="text-xs text-gray-600 mt-0.5">
                   {infoFaturamento.dataFormatada}
                 </p>
@@ -109,9 +132,16 @@ const StatusStepper: React.FC<StatusStepperProps> = ({
             {/* Mostrar data de entrega no passo "Em Rota" */}
             {step.status === StatusPedido.EM_ROTA && dataEntregaPrevista && infoEntrega && (
               <div className="mt-2 text-center">
-                <p className="text-xs text-green-700 font-semibold">
-                  📅 {infoEntrega.dataFormatada}
-                </p>
+                <div className="flex items-center justify-center gap-1">
+                  <p className="text-xs text-green-700 font-semibold">
+                    📅 {infoEntrega.dataFormatada}
+                  </p>
+                  {canEditAcompanhamento && onEditEntrega && (
+                    <button onClick={onEditEntrega} className="text-green-500 hover:text-green-700" title="Editar entrega">
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
                 <p className={`text-xs font-bold mt-0.5 ${
                   infoEntrega.diasRestantes < 0 
                     ? 'text-red-600' 

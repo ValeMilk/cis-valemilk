@@ -369,6 +369,62 @@ router.post('/:id/aprovar-diretoria', authMiddleware, requireRole(PerfilEnum.DIR
   }
 });
 
+// Editar dados de acompanhamento (previsão faturamento, faturamento, entrega)
+router.put('/:id/editar-acompanhamento', authMiddleware, requireRole(PerfilEnum.COMPRADOR, PerfilEnum.DIRETORIA, PerfilEnum.ADMIN), async (req: AuthRequest, res) => {
+  try {
+    const pedido = await Pedido.findById(req.params.id);
+    if (!pedido) {
+      return res.status(404).json({ message: 'Pedido não encontrado' });
+    }
+
+    const user = await User.findById(req.user!.id);
+    const camposAlterados: string[] = [];
+
+    // Editar previsão de faturamento
+    if (req.body.data_previsao_faturamento !== undefined) {
+      pedido.data_previsao_faturamento = new Date(req.body.data_previsao_faturamento + 'T12:00:00');
+      camposAlterados.push('Previsão de Faturamento');
+    }
+
+    // Editar dados de faturamento
+    if (req.body.numero_nota_fiscal !== undefined) {
+      pedido.numero_nota_fiscal = req.body.numero_nota_fiscal;
+      camposAlterados.push('Número NF');
+    }
+    if (req.body.data_faturamento !== undefined) {
+      pedido.data_faturamento = new Date(req.body.data_faturamento + 'T12:00:00');
+      camposAlterados.push('Data de Faturamento');
+    }
+    if (req.body.valor_nota_fiscal !== undefined) {
+      pedido.valor_nota_fiscal = req.body.valor_nota_fiscal;
+      camposAlterados.push('Valor NF');
+    }
+
+    // Editar data de entrega prevista
+    if (req.body.data_prevista_entrega !== undefined) {
+      pedido.data_prevista_entrega = new Date(req.body.data_prevista_entrega + 'T12:00:00');
+      camposAlterados.push('Data de Entrega Prevista');
+    }
+
+    if (camposAlterados.length === 0) {
+      return res.status(400).json({ message: 'Nenhum campo para editar' });
+    }
+
+    pedido.historico_status.push({
+      status: pedido.status_atual,
+      usuario_id: user!._id,
+      usuario_nome: user!.nome,
+      data: new Date(),
+      observacao: `Editou acompanhamento: ${camposAlterados.join(', ')}`
+    });
+
+    await pedido.save();
+    res.json(pedido);
+  } catch (error) {
+    res.status(500).json({ message: 'Erro ao editar acompanhamento' });
+  }
+});
+
 // Cancel pedido
 router.post('/:id/cancelar', authMiddleware, async (req: AuthRequest, res) => {
   try {
