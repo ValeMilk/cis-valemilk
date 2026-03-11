@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Package, Search, RefreshCw, CheckCircle, Clock, AlertTriangle, Trash2, WifiOff, Wifi, Printer } from 'lucide-react';
+import { Package, Search, RefreshCw, CheckCircle, Clock, AlertTriangle, Trash2, WifiOff, Wifi, Printer, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import api from '../services/api';
 
@@ -76,6 +76,8 @@ const InventarioPage = () => {
   const [contagemFilter, setContagemFilter] = useState<'todos' | 'pendentes' | 'contados'>('todos');
   const [abcFilter, setAbcFilter] = useState<'' | 'A' | 'B' | 'C'>('');
   const [abcMap, setAbcMap] = useState<Record<string, 'A' | 'B' | 'C'>>({});
+  const [sortColumn, setSortColumn] = useState<'codigo' | 'descricao' | 'abc' | 'saldo' | ''>('');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [savingItem, setSavingItem] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingCount, setPendingCount] = useState(getPendingQueue().length);
@@ -162,7 +164,7 @@ const InventarioPage = () => {
       return;
     }
     filterItems();
-  }, [inventario, searchTerm, tipoFilter, depositoFilter, contagemFilter, abcFilter]);
+  }, [inventario, searchTerm, tipoFilter, depositoFilter, contagemFilter, abcFilter, sortColumn, sortDirection]);
 
   const fetchInventario = async () => {
     try {
@@ -262,6 +264,29 @@ const InventarioPage = () => {
       filtered = filtered.filter(item => getContagem(item) === null || getContagem(item) === undefined);
     } else if (contagemFilter === 'contados') {
       filtered = filtered.filter(item => getContagem(item) !== null && getContagem(item) !== undefined);
+    }
+
+    // Aplicar ordenação
+    if (sortColumn) {
+      const dir = sortDirection === 'asc' ? 1 : -1;
+      filtered.sort((a, b) => {
+        if (sortColumn === 'codigo') {
+          return a.codigo_item.localeCompare(b.codigo_item) * dir;
+        }
+        if (sortColumn === 'descricao') {
+          return a.descricao.localeCompare(b.descricao) * dir;
+        }
+        if (sortColumn === 'abc') {
+          const order = { A: 1, B: 2, C: 3 };
+          const valA = order[novoAbcMap[a.codigo_item]] || 4;
+          const valB = order[novoAbcMap[b.codigo_item]] || 4;
+          return (valA - valB) * dir;
+        }
+        if (sortColumn === 'saldo') {
+          return (getSaldo(a) - getSaldo(b)) * dir;
+        }
+        return 0;
+      });
     }
 
     setFilteredItems(filtered);
@@ -393,6 +418,23 @@ const InventarioPage = () => {
 
   const formatNumber = (num: number): string => {
     return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const handleSort = (column: 'codigo' | 'descricao' | 'abc' | 'saldo') => {
+    if (sortColumn === column) {
+      if (sortDirection === 'asc') setSortDirection('desc');
+      else { setSortColumn(''); setSortDirection('asc'); }
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const renderSortIcon = (column: string) => {
+    if (sortColumn !== column) return <ArrowUpDown size={12} className="text-gray-400" />;
+    return sortDirection === 'asc'
+      ? <ArrowUp size={12} className="text-blue-600" />
+      : <ArrowDown size={12} className="text-blue-600" />;
   };
 
   const formatDate = (dateStr: string): string => {
@@ -630,13 +672,22 @@ const InventarioPage = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descrição</th>
-                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">ABC</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100" onClick={() => handleSort('codigo')}>
+                    <div className="flex items-center gap-1">Código {renderSortIcon('codigo')}</div>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100" onClick={() => handleSort('descricao')}>
+                    <div className="flex items-center gap-1">Descrição {renderSortIcon('descricao')}</div>
+                  </th>
+                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell cursor-pointer select-none hover:bg-gray-100" onClick={() => handleSort('abc')}>
+                    <div className="flex items-center justify-center gap-1">ABC {renderSortIcon('abc')}</div>
+                  </th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">UM</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Tipo</th>
-                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {depositoFilter === 'aberto' ? 'Dep. Aberto' : depositoFilter === 'fechado_ext' ? 'Dep. Fechado (Ext)' : 'Dep. Fechado (Int)'}
+                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100" onClick={() => handleSort('saldo')}>
+                    <div className="flex items-center justify-end gap-1">
+                      {depositoFilter === 'aberto' ? 'Dep. Aberto' : depositoFilter === 'fechado_ext' ? 'Dep. Fechado (Ext)' : 'Dep. Fechado (Int)'}
+                      {renderSortIcon('saldo')}
+                    </div>
                   </th>
                   {depositoFilter === 'aberto' && (
                     <>
