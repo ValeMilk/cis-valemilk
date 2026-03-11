@@ -385,6 +385,7 @@ export const getInventarioQuery = (): string => {
             E02.E02_DESC,
             E02.E02_UM,
             E02.E02_TIPO,
+            E02.E02_Livre,
             M00.M00_ID_A00 AS Id_Fornecedor, 
             
             CASE 
@@ -454,6 +455,7 @@ export const getInventarioQuery = (): string => {
     SELECT
         upf.TIPO_DESC AS Tipo,
         upf.M01_ID_E02 AS Cod,
+        upf.E02_Livre AS CodLivre,
         upf.E02_DESC AS Descricao,
         upf.E02_UM AS UM,
         
@@ -475,6 +477,7 @@ export const getInventarioQuery = (): string => {
 export interface ERPInventarioItem {
   Tipo: string;
   Cod: number;
+  CodLivre: string | null;
   Descricao: string;
   UM: string;
   'Dep. Aberto (Interno)': string;

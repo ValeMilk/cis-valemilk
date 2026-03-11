@@ -48,7 +48,9 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
       const depAbertoReal = depAbertoInterno - producoesAberto;
       
       return {
-        codigo_item: String(erpItem.Cod).padStart(6, '0'),
+        codigo_item: erpItem.Tipo === 'Produto Acabado' && erpItem.CodLivre
+          ? String(erpItem.CodLivre).trim()
+          : String(erpItem.Cod).padStart(6, '0'),
         descricao: erpItem.Descricao,
         tipo: erpItem.Tipo,
         unidade_medida: erpItem.UM || '',
