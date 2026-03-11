@@ -243,13 +243,13 @@ const InventarioPage = () => {
       filtered = filtered.filter(item => item.tipo === tipoFilter);
     }
 
-    // Filtrar itens com saldo > 0 no depósito selecionado
+    // Filtrar itens com saldo != 0 no depósito selecionado
     if (depositoFilter === 'aberto') {
-      filtered = filtered.filter(item => item.dep_aberto_interno > 0 || item.producoes_aberto > 0);
+      filtered = filtered.filter(item => item.dep_aberto_interno !== 0 || item.producoes_aberto !== 0);
     } else if (depositoFilter === 'fechado_ext') {
-      filtered = filtered.filter(item => item.dep_fechado_externo > 0);
+      filtered = filtered.filter(item => item.dep_fechado_externo !== 0);
     } else if (depositoFilter === 'fechado_int') {
-      filtered = filtered.filter(item => item.dep_fechado_interno > 0);
+      filtered = filtered.filter(item => item.dep_fechado_interno !== 0);
     }
 
     // Calcular ABC antes de aplicar filtro ABC
