@@ -136,8 +136,14 @@ const PedidoDetailPage = () => {
                          user.perfil === PerfilEnum.DIRETORIA || 
                          user.perfil === PerfilEnum.ADMIN;
     
-    // Apenas status ANALISE_COTACAO pode ser editado
-    const canEditByStatus = pedido.status_atual === StatusPedido.ANALISE_COTACAO;
+    // Pode editar até o status FATURADO
+    const statusEditaveis = [
+      StatusPedido.ANALISE_COTACAO,
+      StatusPedido.ENVIADO_FORNECEDOR,
+      StatusPedido.AGUARDANDO_FATURAMENTO,
+      StatusPedido.FATURADO
+    ];
+    const canEditByStatus = statusEditaveis.includes(pedido.status_atual);
     
     return canEditByRole && canEditByStatus;
   };
