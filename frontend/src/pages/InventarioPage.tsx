@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Package, Search, RefreshCw, CheckCircle, Clock, AlertTriangle, Trash2, WifiOff, Wifi } from 'lucide-react';
+import { Package, Search, RefreshCw, CheckCircle, Clock, AlertTriangle, Trash2, WifiOff, Wifi, Printer } from 'lucide-react';
+import { useReactToPrint } from 'react-to-print';
 import api from '../services/api';
 
 interface PendingContagem {
@@ -81,6 +82,28 @@ const InventarioPage = () => {
   const [isSyncingOffline, setIsSyncingOffline] = useState(false);
   const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const debounceObsTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const printRef = useRef<HTMLDivElement>(null);
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: inventario ? `Inventario_${new Date(inventario.data_snapshot).toLocaleDateString('pt-BR').replace(/\//g, '-')}` : 'Inventario',
+  });
+
+  const getDepositoLabel = () => {
+    if (depositoFilter === 'aberto') return 'Depósito Aberto (Interno)';
+    if (depositoFilter === 'fechado_ext') return 'Depósito Fechado (Externo)';
+    return 'Depósito Fechado (Interno)';
+  };
+
+  const getActiveFiltersLabel = () => {
+    const filtros: string[] = [];
+    filtros.push(getDepositoLabel());
+    if (tipoFilter) filtros.push(`Tipo: ${tipoFilter}`);
+    if (searchTerm) filtros.push(`Busca: "${searchTerm}"`);
+    if (abcFilter) filtros.push(`Curva: ${abcFilter}`);
+    if (contagemFilter !== 'todos') filtros.push(`Status: ${contagemFilter === 'pendentes' ? 'Pendentes' : 'Contados'}`);
+    return filtros.join(' | ');
+  };
 
   // Monitorar conexão
   useEffect(() => {
@@ -478,6 +501,15 @@ const InventarioPage = () => {
               </button>
             </>
           )}
+          {inventario && (
+            <button
+              onClick={() => handlePrint()}
+              className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+            >
+              <Printer size={18} />
+              <span>Exportar PDF</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -736,6 +768,128 @@ const InventarioPage = () => {
             </div>
           </div>
         </>
+      )}
+
+      {/* ===== PRINT VIEW (oculto) ===== */}
+      {inventario && (
+        <div style={{ display: 'none' }}>
+          <div ref={printRef} className="p-8 bg-white">
+            {/* Cabeçalho do PDF */}
+            <div className="border-b-4 border-blue-600 pb-6 mb-6">
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-4">
+                  <img src="/assets/valemilk-logo.png" alt="Vale Milk" className="h-16 w-auto" />
+                  <p className="text-sm text-gray-600">Relatório de Inventário</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-bold text-gray-800">Inventário Físico</div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    Data: {formatDate(inventario.data_snapshot)}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Responsável: {inventario.criado_por_nome}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Status: {inventario.status === 'em_andamento' ? 'Em Andamento' : 'Finalizado'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Info empresa + filtros no PDF */}
+            <div className="grid grid-cols-2 gap-6 mb-6">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Empresa</h3>
+                <div className="bg-gray-50 p-4 rounded">
+                  <p className="font-semibold text-gray-800">KM CACAU INDÚSTRIA E COMERCIO DE LATICINIOS LTDA</p>
+                  <p className="text-sm text-gray-600 mt-1">CNPJ: 02.518.353/0001-03</p>
+                  <p className="text-sm text-gray-600">AV. JUSCELINO KUBITSCHEK, S/N - OMBREIRA</p>
+                  <p className="text-sm text-gray-600">PENTECOSTE - CEARÁ</p>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Depósito</h3>
+                <div className="bg-blue-50 p-4 rounded border-l-4 border-blue-600">
+                  <p className="font-semibold text-blue-900">{getDepositoLabel()}</p>
+                </div>
+                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2 mt-4">Resumo</h3>
+                <div className="bg-gray-50 p-4 rounded text-sm">
+                  <p>Total de Itens: <strong>{filteredItems.length}</strong></p>
+                  <p>Contados: <strong>{filteredItems.filter(i => getContagem(i) !== null && getContagem(i) !== undefined).length}</strong></p>
+                  <p>Pendentes: <strong>{filteredItems.filter(i => getContagem(i) === null || getContagem(i) === undefined).length}</strong></p>
+                  <p className="mt-1">Filtros: <strong>{getActiveFiltersLabel()}</strong></p>
+                </div>
+              </div>
+            </div>
+
+            {/* Tabela para impressão */}
+            <table className="w-full border-collapse border border-gray-300 text-xs">
+              <thead>
+                <tr className="bg-blue-600 text-white">
+                  <th className="border border-gray-300 px-2 py-2 text-left">CÓDIGO</th>
+                  <th className="border border-gray-300 px-2 py-2 text-left">DESCRIÇÃO</th>
+                  <th className="border border-gray-300 px-2 py-2 text-center">ABC</th>
+                  <th className="border border-gray-300 px-2 py-2 text-center">UM</th>
+                  <th className="border border-gray-300 px-2 py-2 text-right">
+                    {depositoFilter === 'aberto' ? 'DEP. ABERTO' : depositoFilter === 'fechado_ext' ? 'DEP. FECH. (EXT)' : 'DEP. FECH. (INT)'}
+                  </th>
+                  {depositoFilter === 'aberto' && (
+                    <>
+                      <th className="border border-gray-300 px-2 py-2 text-right">OPS ABERTAS</th>
+                      <th className="border border-gray-300 px-2 py-2 text-right">DEP. REAL</th>
+                    </>
+                  )}
+                  <th className="border border-gray-300 px-2 py-2 text-right">CONTAGEM</th>
+                  <th className="border border-gray-300 px-2 py-2 text-right">DIFERENÇA</th>
+                  <th className="border border-gray-300 px-2 py-2 text-left">OBSERVAÇÕES</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredItems.map((item, index) => {
+                  const contagem = getContagem(item);
+                  const saldo = getSaldo(item);
+                  const diferenca = contagem !== null && contagem !== undefined ? contagem - saldo : null;
+                  return (
+                    <tr key={item.codigo_item} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      <td className="border border-gray-300 px-2 py-1">{item.codigo_item}</td>
+                      <td className="border border-gray-300 px-2 py-1">{item.descricao}</td>
+                      <td className="border border-gray-300 px-2 py-1 text-center font-bold">
+                        {abcMap[item.codigo_item] || '-'}
+                      </td>
+                      <td className="border border-gray-300 px-2 py-1 text-center">{item.unidade_medida}</td>
+                      <td className="border border-gray-300 px-2 py-1 text-right">
+                        {depositoFilter === 'aberto' ? formatNumber(item.dep_aberto_interno) :
+                         depositoFilter === 'fechado_ext' ? formatNumber(item.dep_fechado_externo) :
+                         formatNumber(item.dep_fechado_interno)}
+                      </td>
+                      {depositoFilter === 'aberto' && (
+                        <>
+                          <td className="border border-gray-300 px-2 py-1 text-right">{formatNumber(item.producoes_aberto)}</td>
+                          <td className="border border-gray-300 px-2 py-1 text-right font-semibold">{formatNumber(item.dep_aberto_real)}</td>
+                        </>
+                      )}
+                      <td className="border border-gray-300 px-2 py-1 text-right font-semibold">
+                        {contagem !== null && contagem !== undefined ? formatNumber(contagem) : '-'}
+                      </td>
+                      <td className={`border border-gray-300 px-2 py-1 text-right font-semibold ${
+                          diferenca !== null && diferenca > 0 ? 'text-green-600' :
+                          diferenca !== null && diferenca < 0 ? 'text-red-600' : ''
+                        }`}>
+                          {diferenca !== null ? `${diferenca > 0 ? '+' : ''}${formatNumber(diferenca)}` : '-'}
+                      </td>
+                      <td className="border border-gray-300 px-2 py-1">{item.observacao || '-'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {/* Rodapé do PDF */}
+            <div className="mt-6 text-center text-xs text-gray-500">
+              <p className="mt-1">Para mais informações, entre em contato: compras@valemilk.com.br</p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
