@@ -495,6 +495,152 @@ export interface ERPInventarioItem {
   'Produções em Aberto': string;
 }
 
+// Query para inventário filial - Depósito 2, apenas tipo 4 (Produto Acabado)
+export const getInventarioFilialQuery = (): string => {
+  return `
+    WITH UltimoPorFornecedor AS (
+        SELECT
+            M00.M00_ENTSAI,
+            M01.M01_ID_E02,
+            E02.E02_DESC,
+            E02.E02_UM,
+            E02.E02_TIPO,
+            E02.E02_LIVRE,
+            
+            CASE E02.E02_TIPO
+                WHEN 4 THEN 'Produto Acabado'
+                ELSE 'Outro'
+            END AS TIPO_DESC,
+            
+            ROW_NUMBER() OVER (
+                PARTITION BY M01.M01_ID_E02
+                ORDER BY M00.M00_ENTSAI DESC, M00.M00_ID DESC
+            ) AS rn
+        FROM dbo.M00
+        INNER JOIN dbo.M01 ON M00.M00_ID = M01.M01_ID_M00
+        INNER JOIN dbo.E02 ON E02.E02_ID = M01.M01_ID_E02
+        INNER JOIN dbo.E01 ON E01.E01_ID = E02.E02_ID_E01
+        LEFT JOIN dbo.A00 ON M00.M00_ID_A00 = A00.A00_ID
+        WHERE M00.M00_DTLANC >= '2023-09-01'
+          AND M00.M00_ID_EMP IN (80, 81, 82)
+          AND M00.M00_STATUS = 'N'
+          AND E02.E02_TIPO IN (4)
+          AND E02.E02_ATIVO = 1
+          AND E01.E01_DESC <> 'Outros'
+          AND M01.M01_ID_E02 <> 1
+    ),
+    EstoqueSaldo AS (
+        SELECT
+            E03_ID_E02,
+            SUM(CASE WHEN E03_ID_E00 = 2 THEN ISNULL(E03_SLDQTD, 0) ELSE 0 END) AS SALDO_DEP_2
+        FROM dbo.E03
+        WHERE E03_ID_E00 = 2
+          AND E03_ID_E02 <> 1
+        GROUP BY E03_ID_E02
+    ),
+    ProducoesAberto AS (
+        SELECT
+            c.P00_ID_E02,
+            SUM(b.P20_QTD_PREV) AS TOTAL_PREV_QTD
+        FROM dbo.P20 b
+        INNER JOIN dbo.P00 c ON b.P20_ID_P00 = c.P00_ID
+        WHERE b.P20_STATUS = 'A'
+        GROUP BY c.P00_ID_E02
+    )
+    SELECT
+        upf.TIPO_DESC AS Tipo,
+        upf.E02_LIVRE AS Cod,
+        upf.E02_DESC AS Descricao,
+        upf.E02_UM AS UM,
+
+        FORMAT(ISNULL(es.SALDO_DEP_2, 0), 'N3', 'pt-BR') AS [Depósito 2],
+        FORMAT(ISNULL(pa.TOTAL_PREV_QTD, 0), 'N3', 'pt-BR') AS [Produções em Aberto]
+
+    FROM UltimoPorFornecedor upf
+    LEFT JOIN EstoqueSaldo es ON upf.M01_ID_E02 = es.E03_ID_E02
+    LEFT JOIN ProducoesAberto pa ON upf.M01_ID_E02 = pa.P00_ID_E02
+
+    WHERE upf.rn = 1
+    ORDER BY Cod ASC;
+  `;
+};
+
+export interface ERPInventarioFilialItem {
+  Tipo: string;
+  Cod: string;
+  Descricao: string;
+  UM: string;
+  'Depósito 2': string;
+  'Produções em Aberto': string;
+}
+
+// Query para avaria - Depósito 5, apenas tipo 4 (Produto Acabado)
+export const getAvariaQuery = (): string => {
+  return `
+    WITH UltimoPorFornecedor AS (
+        SELECT
+            M00.M00_ENTSAI,
+            M01.M01_ID_E02,
+            E02.E02_DESC,
+            E02.E02_UM,
+            E02.E02_TIPO,
+            E02.E02_LIVRE,
+            
+            CASE E02.E02_TIPO
+                WHEN 4 THEN 'Produto Acabado'
+                ELSE 'Outro'
+            END AS TIPO_DESC,
+            
+            ROW_NUMBER() OVER (
+                PARTITION BY M01.M01_ID_E02
+                ORDER BY M00.M00_ENTSAI DESC, M00.M00_ID DESC
+            ) AS rn
+        FROM dbo.M00
+        INNER JOIN dbo.M01 ON M00.M00_ID = M01.M01_ID_M00
+        INNER JOIN dbo.E02 ON E02.E02_ID = M01.M01_ID_E02
+        INNER JOIN dbo.E01 ON E01.E01_ID = E02.E02_ID_E01
+        LEFT JOIN dbo.A00 ON M00.M00_ID_A00 = A00.A00_ID
+        WHERE M00.M00_DTLANC >= '2023-09-01'
+          AND M00.M00_ID_EMP IN (80, 81, 82)
+          AND M00.M00_STATUS = 'N'
+          AND E02.E02_TIPO IN (4)
+          AND E02.E02_ATIVO = 1
+          AND E01.E01_DESC <> 'Outros'
+          AND M01.M01_ID_E02 <> 1
+    ),
+    EstoqueSaldo AS (
+        SELECT
+            E03_ID_E02,
+            SUM(CASE WHEN E03_ID_E00 = 5 THEN ISNULL(E03_SLDQTD, 0) ELSE 0 END) AS SALDO_DEP_5
+        FROM dbo.E03
+        WHERE E03_ID_E00 = 5
+          AND E03_ID_E02 <> 1
+        GROUP BY E03_ID_E02
+    )
+    SELECT
+        upf.TIPO_DESC AS Tipo,
+        upf.E02_LIVRE AS Cod,
+        upf.E02_DESC AS Descricao,
+        upf.E02_UM AS UM,
+
+        FORMAT(ISNULL(es.SALDO_DEP_5, 0), 'N3', 'pt-BR') AS [Depósito 5]
+
+    FROM UltimoPorFornecedor upf
+    LEFT JOIN EstoqueSaldo es ON upf.M01_ID_E02 = es.E03_ID_E02
+
+    WHERE upf.rn = 1
+    ORDER BY Cod ASC;
+  `;
+};
+
+export interface ERPAvariaItem {
+  Tipo: string;
+  Cod: string;
+  Descricao: string;
+  UM: string;
+  'Depósito 5': string;
+}
+
 // Query para buscar todos os itens que cada fornecedor já vendeu (histórico completo)
 export const getFornecedorItensHistoricoQuery = (): string => {
   return `

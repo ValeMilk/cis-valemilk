@@ -2,6 +2,7 @@ export enum PerfilEnum {
   COMPRADOR = 'Comprador',
   DIRETORIA = 'Diretoria',
   RECEBIMENTO = 'Recebimento',
+  FILIAL = 'Filial',
   ADMIN = 'Admin'
 }
 

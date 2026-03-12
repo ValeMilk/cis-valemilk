@@ -1,0 +1,236 @@
+import { Router } from 'express';
+import { authMiddleware } from '../middleware/auth';
+import { executeERPQuery, getInventarioFilialQuery, ERPInventarioFilialItem } from '../services/erp.service';
+import { InventarioFilial, IInventarioFilialItem } from '../models/InventarioFilial';
+import { User } from '../models/User';
+
+const router = Router();
+
+const parseFormattedNumber = (value: string): number => {
+  if (!value || value === '-') return 0;
+  return parseFloat(value.replace(/R\$\s*/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+};
+
+// GET - Buscar inventário filial ativo
+router.get('/active', authMiddleware, async (req, res) => {
+  try {
+    const inventario = await InventarioFilial.findOne({ status: 'em_andamento' }).sort({ data_snapshot: -1 });
+    res.json(inventario || null);
+  } catch (error) {
+    console.error('❌ Erro ao buscar inventário filial:', error);
+    res.status(500).json({ message: 'Erro ao buscar inventário filial' });
+  }
+});
+
+// POST - Carregar dados do ERP
+router.post('/sync-erp', authMiddleware, async (req, res) => {
+  try {
+    const user = (req as any).user;
+    const userDoc = await User.findById(user.id).select('nome');
+    const nomeUsuario = userDoc?.nome || user.email;
+
+    const erpItems = await executeERPQuery<ERPInventarioFilialItem>(getInventarioFilialQuery());
+    console.log(`✅ ${erpItems.length} itens de inventário filial carregados do ERP`);
+
+    const itens: IInventarioFilialItem[] = erpItems.map(erpItem => {
+      const deposito2 = parseFormattedNumber(erpItem['Depósito 2']);
+      const producoesAberto = parseFormattedNumber(erpItem['Produções em Aberto']);
+      return {
+        codigo_item: String(erpItem.Cod || '').trim(),
+        descricao: erpItem.Descricao,
+        tipo: erpItem.Tipo,
+        unidade_medida: erpItem.UM || '',
+        deposito_2: deposito2,
+        producoes_aberto: producoesAberto,
+        dep_real: deposito2 - producoesAberto,
+        contagem: null,
+        contagem_data: undefined,
+        contagem_usuario: undefined
+      };
+    });
+
+    const inventarioExistente = await InventarioFilial.findOne({ status: 'em_andamento' });
+
+    if (inventarioExistente) {
+      const contagensMap = new Map<string, { contagem: number | null; data?: Date; usuario?: string; observacao?: string }>();
+      for (const item of inventarioExistente.itens) {
+        const temContagem = (item as any).contagem !== null;
+        const temObs = (item as any).observacao && (item as any).observacao.trim() !== '';
+        if (temContagem || temObs) {
+          contagensMap.set(item.codigo_item, {
+            contagem: (item as any).contagem,
+            data: item.contagem_data,
+            usuario: item.contagem_usuario,
+            observacao: (item as any).observacao
+          });
+        }
+      }
+
+      const itensAtualizados = itens.map(item => {
+        const contagemExistente = contagensMap.get(item.codigo_item);
+        if (contagemExistente) {
+          return {
+            ...item,
+            contagem: contagemExistente.contagem,
+            contagem_data: contagemExistente.data,
+            contagem_usuario: contagemExistente.usuario,
+            observacao: contagemExistente.observacao
+          };
+        }
+        return item;
+      });
+
+      inventarioExistente.itens = itensAtualizados as any;
+      inventarioExistente.data_snapshot = new Date();
+      await inventarioExistente.save();
+      res.json(inventarioExistente);
+    } else {
+      const novoInventario = new InventarioFilial({
+        data_snapshot: new Date(),
+        status: 'em_andamento',
+        criado_por: user.id,
+        criado_por_nome: nomeUsuario,
+        itens
+      });
+      await novoInventario.save();
+      res.json(novoInventario);
+    }
+  } catch (error) {
+    console.error('❌ Erro ao sincronizar ERP para inventário filial:', error);
+    res.status(500).json({ message: 'Erro ao carregar dados do ERP' });
+  }
+});
+
+// PUT - Salvar contagem física de um item
+router.put('/:inventarioId/item/:codigoItem', authMiddleware, async (req, res) => {
+  try {
+    const { inventarioId, codigoItem } = req.params;
+    const { contagem_fisica, observacao } = req.body;
+    const user = (req as any).user;
+
+    const inventario = await InventarioFilial.findById(inventarioId);
+    if (!inventario) return res.status(404).json({ message: 'Inventário não encontrado' });
+    if (inventario.status !== 'em_andamento') return res.status(400).json({ message: 'Inventário já finalizado' });
+
+    const item = inventario.itens.find(i => i.codigo_item === codigoItem);
+    if (!item) return res.status(404).json({ message: 'Item não encontrado' });
+
+    (item as any).contagem = contagem_fisica !== null && contagem_fisica !== undefined
+      ? Number(contagem_fisica)
+      : null;
+
+    if (observacao !== undefined) {
+      (item as any).observacao = observacao;
+    }
+
+    item.contagem_data = new Date();
+    item.contagem_usuario = user.id;
+
+    await inventario.save();
+    res.json({ message: 'Contagem salva', item });
+  } catch (error) {
+    console.error('❌ Erro ao salvar contagem:', error);
+    res.status(500).json({ message: 'Erro ao salvar contagem' });
+  }
+});
+
+// PUT - Salvar observação
+router.put('/:inventarioId/item/:codigoItem/observacao', authMiddleware, async (req, res) => {
+  try {
+    const { inventarioId, codigoItem } = req.params;
+    const { observacao } = req.body;
+
+    const inventario = await InventarioFilial.findById(inventarioId);
+    if (!inventario) return res.status(404).json({ message: 'Inventário não encontrado' });
+    if (inventario.status !== 'em_andamento') return res.status(400).json({ message: 'Inventário já finalizado' });
+
+    const item = inventario.itens.find(i => i.codigo_item === codigoItem);
+    if (!item) return res.status(404).json({ message: 'Item não encontrado' });
+
+    (item as any).observacao = observacao || '';
+    await inventario.save();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Erro ao salvar observação:', error);
+    res.status(500).json({ message: 'Erro ao salvar observação' });
+  }
+});
+
+// PUT - Finalizar inventário
+router.put('/:inventarioId/finalizar', authMiddleware, async (req, res) => {
+  try {
+    const inventario = await InventarioFilial.findById(req.params.inventarioId);
+    if (!inventario) return res.status(404).json({ message: 'Inventário não encontrado' });
+
+    inventario.status = 'finalizado';
+    await inventario.save();
+    res.json({ message: 'Inventário finalizado', inventario });
+  } catch (error) {
+    console.error('❌ Erro ao finalizar inventário filial:', error);
+    res.status(500).json({ message: 'Erro ao finalizar inventário' });
+  }
+});
+
+// GET - Listar finalizados
+router.get('/finalizados', authMiddleware, async (req, res) => {
+  try {
+    const { dataInicio, dataFim } = req.query;
+    const filtro: any = { status: 'finalizado' };
+
+    if (dataInicio || dataFim) {
+      filtro.data_snapshot = {};
+      if (dataInicio) filtro.data_snapshot.$gte = new Date(dataInicio as string);
+      if (dataFim) {
+        const fim = new Date(dataFim as string);
+        fim.setHours(23, 59, 59, 999);
+        filtro.data_snapshot.$lte = fim;
+      }
+    }
+
+    const inventarios = await InventarioFilial.find(filtro)
+      .select('data_snapshot criado_por_nome itens')
+      .sort({ data_snapshot: -1 });
+
+    const resumo = inventarios.map(inv => ({
+      _id: inv._id,
+      data_snapshot: inv.data_snapshot,
+      criado_por_nome: inv.criado_por_nome,
+      total_itens: inv.itens.length,
+      itens_contados: inv.itens.filter(i => (i as any).contagem !== null).length
+    }));
+
+    res.json(resumo);
+  } catch (error) {
+    console.error('❌ Erro ao listar finalizados:', error);
+    res.status(500).json({ message: 'Erro ao listar inventários finalizados' });
+  }
+});
+
+// GET - Detalhes de um inventário
+router.get('/:inventarioId', authMiddleware, async (req, res) => {
+  try {
+    const inventario = await InventarioFilial.findById(req.params.inventarioId);
+    if (!inventario) return res.status(404).json({ message: 'Inventário não encontrado' });
+    res.json(inventario);
+  } catch (error) {
+    console.error('❌ Erro ao buscar inventário filial:', error);
+    res.status(500).json({ message: 'Erro ao buscar inventário' });
+  }
+});
+
+// DELETE - Descartar inventário em andamento
+router.delete('/:inventarioId', authMiddleware, async (req, res) => {
+  try {
+    const inventario = await InventarioFilial.findById(req.params.inventarioId);
+    if (!inventario) return res.status(404).json({ message: 'Inventário não encontrado' });
+    if (inventario.status !== 'em_andamento') return res.status(400).json({ message: 'Só é possível descartar inventários em andamento' });
+
+    await InventarioFilial.findByIdAndDelete(req.params.inventarioId);
+    res.json({ message: 'Inventário descartado' });
+  } catch (error) {
+    console.error('❌ Erro ao descartar inventário filial:', error);
+    res.status(500).json({ message: 'Erro ao descartar inventário' });
+  }
+});
+
+export default router;

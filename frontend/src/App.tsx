@@ -13,6 +13,8 @@ import InventarioPage from './pages/InventarioPage';
 import CentralInventarioPage from './pages/CentralInventarioPage';
 import ReposicaoPage from './pages/ReposicaoPage';
 import CentralReposicaoPage from './pages/CentralReposicaoPage';
+import InventarioFilialPage from './pages/InventarioFilialPage';
+import AvariaPage from './pages/AvariaPage';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -145,6 +147,26 @@ function App() {
           <ProtectedRoute>
             <Layout>
               <CentralReposicaoPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/inventario-filial"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <InventarioFilialPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/avaria"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <AvariaPage />
             </Layout>
           </ProtectedRoute>
         }
