@@ -58,6 +58,7 @@ const CentralInventarioPage = () => {
   const [depositoView, setDepositoView] = useState('aberto');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'todos' | 'contados' | 'com_divergencia' | 'sem_divergencia'>('todos');
+  const [tipoFilter, setTipoFilter] = useState<string>('');
   const [sortDiferenca, setSortDiferenca] = useState<'none' | 'asc' | 'desc'>('none');
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -110,6 +111,7 @@ const CentralInventarioPage = () => {
     setSearchTerm('');
     setDepositoView('aberto');
     setStatusFilter('todos');
+    setTipoFilter('');
     setSortDiferenca('none');
   };
 
@@ -149,6 +151,10 @@ const CentralInventarioPage = () => {
       items = items.filter(i => i.dep_fechado_externo > 0);
     } else {
       items = items.filter(i => i.dep_fechado_interno > 0);
+    }
+
+    if (tipoFilter) {
+      items = items.filter(i => i.tipo === tipoFilter);
     }
 
     if (searchTerm) {
@@ -352,6 +358,7 @@ const CentralInventarioPage = () => {
     const filialItens = (detalhe as any).itens as InventarioFilialItemDetail[];
     const filialFiltered = filialItens.filter(i => {
       if (i.deposito_2 === 0) return false;
+      if (tipoFilter && i.tipo !== tipoFilter) return false;
       if (searchTerm) {
         const lower = searchTerm.toLowerCase();
         if (!i.descricao.toLowerCase().includes(lower) && !i.codigo_item.toLowerCase().includes(lower)) return false;
@@ -407,13 +414,20 @@ const CentralInventarioPage = () => {
 
         {/* Filtros */}
         <div className="bg-white rounded-lg shadow p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input type="text" placeholder="Buscar código ou descrição..." value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500" />
             </div>
+            <select value={tipoFilter} onChange={(e) => setTipoFilter(e.target.value)}
+              className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500">
+              <option value="">Todos os Tipos</option>
+              {Array.from(new Set(filialItens.map(i => i.tipo))).sort().map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)}
               className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500">
               <option value="todos">Todos os Itens</option>
@@ -633,7 +647,7 @@ const CentralInventarioPage = () => {
 
       {/* Filtros do detalhe */}
       <div className="bg-white rounded-lg shadow p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
             <input
@@ -652,6 +666,16 @@ const CentralInventarioPage = () => {
             <option value="aberto">Dep. Aberto (Interno)</option>
             <option value="fechado_ext">Dep. Fechado (Externo)</option>
             <option value="fechado_int">Dep. Fechado (Interno)</option>
+          </select>
+          <select
+            value={tipoFilter}
+            onChange={(e) => setTipoFilter(e.target.value)}
+            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Todos os Tipos</option>
+            {detalhe && Array.from(new Set(detalhe.itens.map(i => i.tipo))).sort().map(t => (
+              <option key={t} value={t}>{t}</option>
+            ))}
           </select>
           <select
             value={statusFilter}
