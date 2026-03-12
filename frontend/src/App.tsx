@@ -15,6 +15,7 @@ import ReposicaoPage from './pages/ReposicaoPage';
 import CentralReposicaoPage from './pages/CentralReposicaoPage';
 import InventarioFilialPage from './pages/InventarioFilialPage';
 import AvariaPage from './pages/AvariaPage';
+import CentralAvariaPage from './pages/CentralAvariaPage';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -167,6 +168,16 @@ function App() {
           <ProtectedRoute>
             <Layout>
               <AvariaPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/central-avaria"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <CentralAvariaPage />
             </Layout>
           </ProtectedRoute>
         }

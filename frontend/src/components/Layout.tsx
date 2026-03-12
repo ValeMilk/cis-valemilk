@@ -102,6 +102,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <span>Central Inventário</span>
               </Link>
               <Link
+                to="/central-avaria"
+                className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
+              >
+                <AlertTriangle size={20} />
+                <span>Central Avaria</span>
+              </Link>
+              <Link
                 to="/central-reposicao"
                 className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
               >
