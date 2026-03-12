@@ -23,6 +23,7 @@ const perfis = [
   { value: PerfilEnum.COMPRADOR, label: 'Comprador' },
   { value: PerfilEnum.DIRETORIA, label: 'Diretoria' },
   { value: PerfilEnum.RECEBIMENTO, label: 'Recebimento' },
+  { value: PerfilEnum.FILIAL, label: 'Filial' },
   { value: PerfilEnum.ADMIN, label: 'Administrador' }
 ];
 
@@ -135,6 +136,8 @@ export default function UsersPage() {
         return 'bg-green-100 text-green-800';
       case PerfilEnum.RECEBIMENTO:
         return 'bg-orange-100 text-orange-800';
+      case PerfilEnum.FILIAL:
+        return 'bg-teal-100 text-teal-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
