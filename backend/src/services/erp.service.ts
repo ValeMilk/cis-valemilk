@@ -596,6 +596,7 @@ export interface ERPHistoricoCompra {
 export const getHistoricoComprasAllQuery = (): string => {
   return `
 
+-- Created by GitHub Copilot in SSMS - review carefully before executing
 SELECT
         CASE E02.E02_TIPO
             WHEN 0 THEN 'Mercadoria para Revenda'
@@ -612,15 +613,16 @@ SELECT
             WHEN 99 THEN 'Outros'
             ELSE 'Não Definido'
         END AS Tipo,
+        M00.M00_ID AS [ID Nota],
         M01.M01_ID_E02 AS Cod,
         E02.E02_DESC AS Descricao,
         E02.E02_UM AS Unidade,
         M00.M00_ID_A00 AS Id_Fornecedor, 
-        RTRIM(UPPER(A00.A00_FANTASIA)) AS FORNECEDOR,
+        RTRIM(UPPER(A00.A00_FANTASIA)) AS Fornecedor,
         CONVERT(VARCHAR, M00.M00_ENTSAI, 103) AS [Data Entrada],
         M01.M01_QTD AS Quantidade,
-        M01.M01_PRECOU AS [Valor Unitario],
-        M01.M01_QTD * M01.M01_PRECOU AS [Valor Total]
+        FORMAT(M01.M01_PRECOU, 'N2', 'pt-BR') AS [Valor Unitario],
+        FORMAT(M01.M01_QTD * M01.M01_PRECOU, 'N2', 'pt-BR') AS [Valor Total]
     FROM dbo.M00
     INNER JOIN dbo.M01 ON M00.M00_ID = M01.M01_ID_M00
     INNER JOIN dbo.E02 ON E02.E02_ID = M01.M01_ID_E02
@@ -628,13 +630,13 @@ SELECT
     LEFT JOIN dbo.A00 ON M00.M00_ID_A00 = A00.A00_ID
     WHERE M00.M00_DTLANC >= '2023-09-01'
       AND M00.M00_ID_EMP IN (80, 81, 82)
-      AND (M00.M00_STATUS = 'N' OR (M00.M00_STATUS = 'N' AND E02.E02_TIPO = 7))
+      AND M00.M00_STATUS = 'N'
       AND E02.E02_TIPO IN (1, 2, 7, 10)
       AND E02.E02_ATIVO = 1
       AND E01.E01_DESC <> 'Outros'
       AND M01.M01_ID_E02 <> 1
       AND UPPER(E02.E02_DESC) NOT LIKE '%LEITE IN NATURA%'
-    ORDER BY M00.M00_ENTSAI ASC;
+    ORDER BY M01.M01_ID_E02 ASC, M00.M00_ENTSAI DESC;
   `;
 };
 
