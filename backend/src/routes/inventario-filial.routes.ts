@@ -34,33 +34,36 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
 
     const itens: IInventarioFilialItem[] = erpItems.map(erpItem => {
       const deposito2 = parseFormattedNumber(erpItem['Depósito 2']);
-      const producoesAberto = parseFormattedNumber(erpItem['Produções em Aberto']);
       return {
         codigo_item: String(erpItem.Cod || '').trim(),
         descricao: erpItem.Descricao,
         tipo: erpItem.Tipo,
-        unidade_medida: erpItem.UM || '',
+        unidade_medida: erpItem.UN || '',
         deposito_2: deposito2,
-        producoes_aberto: producoesAberto,
-        dep_real: deposito2 - producoesAberto,
-        contagem: null,
-        contagem_data: undefined,
-        contagem_usuario: undefined
+        quantidade_real: null,
+        avariado: null,
+        quantidade_real_data: undefined,
+        quantidade_real_usuario: undefined,
+        avariado_data: undefined,
+        avariado_usuario: undefined
       };
     });
 
     const inventarioExistente = await InventarioFilial.findOne({ status: 'em_andamento' });
 
     if (inventarioExistente) {
-      const contagensMap = new Map<string, { contagem: number | null; data?: Date; usuario?: string; observacao?: string }>();
+      const contagensMap = new Map<string, { quantidade_real: number | null; avariado: number | null; qr_data?: Date; qr_usuario?: string; av_data?: Date; av_usuario?: string; observacao?: string }>();
       for (const item of inventarioExistente.itens) {
-        const temContagem = (item as any).contagem !== null;
+        const temContagem = (item as any).quantidade_real !== null || (item as any).avariado !== null;
         const temObs = (item as any).observacao && (item as any).observacao.trim() !== '';
         if (temContagem || temObs) {
           contagensMap.set(item.codigo_item, {
-            contagem: (item as any).contagem,
-            data: item.contagem_data,
-            usuario: item.contagem_usuario,
+            quantidade_real: (item as any).quantidade_real,
+            avariado: (item as any).avariado,
+            qr_data: (item as any).quantidade_real_data,
+            qr_usuario: (item as any).quantidade_real_usuario,
+            av_data: (item as any).avariado_data,
+            av_usuario: (item as any).avariado_usuario,
             observacao: (item as any).observacao
           });
         }
@@ -71,9 +74,12 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
         if (contagemExistente) {
           return {
             ...item,
-            contagem: contagemExistente.contagem,
-            contagem_data: contagemExistente.data,
-            contagem_usuario: contagemExistente.usuario,
+            quantidade_real: contagemExistente.quantidade_real,
+            avariado: contagemExistente.avariado,
+            quantidade_real_data: contagemExistente.qr_data,
+            quantidade_real_usuario: contagemExistente.qr_usuario,
+            avariado_data: contagemExistente.av_data,
+            avariado_usuario: contagemExistente.av_usuario,
             observacao: contagemExistente.observacao
           };
         }
@@ -105,7 +111,7 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
 router.put('/:inventarioId/item/:codigoItem', authMiddleware, async (req, res) => {
   try {
     const { inventarioId, codigoItem } = req.params;
-    const { contagem_fisica, observacao } = req.body;
+    const { quantidade_real, avariado, observacao } = req.body;
     const user = (req as any).user;
 
     const inventario = await InventarioFilial.findById(inventarioId);
@@ -115,16 +121,21 @@ router.put('/:inventarioId/item/:codigoItem', authMiddleware, async (req, res) =
     const item = inventario.itens.find(i => i.codigo_item === codigoItem);
     if (!item) return res.status(404).json({ message: 'Item não encontrado' });
 
-    (item as any).contagem = contagem_fisica !== null && contagem_fisica !== undefined
-      ? Number(contagem_fisica)
-      : null;
+    if (quantidade_real !== undefined) {
+      (item as any).quantidade_real = quantidade_real !== null ? Number(quantidade_real) : null;
+      (item as any).quantidade_real_data = new Date();
+      (item as any).quantidade_real_usuario = user.id;
+    }
+
+    if (avariado !== undefined) {
+      (item as any).avariado = avariado !== null ? Number(avariado) : null;
+      (item as any).avariado_data = new Date();
+      (item as any).avariado_usuario = user.id;
+    }
 
     if (observacao !== undefined) {
       (item as any).observacao = observacao;
     }
-
-    item.contagem_data = new Date();
-    item.contagem_usuario = user.id;
 
     await inventario.save();
     res.json({ message: 'Contagem salva', item });

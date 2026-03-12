@@ -6,7 +6,8 @@ import api from '../services/api';
 interface PendingContagem {
   inventarioId: string;
   codigoItem: string;
-  contagem_fisica: number | null;
+  quantidade_real?: number | null;
+  avariado?: number | null;
   timestamp: number;
 }
 
@@ -42,11 +43,12 @@ interface InventarioFilialItem {
   tipo: string;
   unidade_medida: string;
   deposito_2: number;
-  producoes_aberto: number;
-  dep_real: number;
-  contagem: number | null;
-  contagem_data?: string;
-  contagem_usuario?: string;
+  quantidade_real: number | null;
+  avariado: number | null;
+  quantidade_real_data?: string;
+  quantidade_real_usuario?: string;
+  avariado_data?: string;
+  avariado_usuario?: string;
   observacao?: string;
 }
 
@@ -115,7 +117,8 @@ const InventarioFilialPage = () => {
     for (const item of queue) {
       try {
         await api.put(`/inventario-filial/${item.inventarioId}/item/${item.codigoItem}`, {
-          contagem_fisica: item.contagem_fisica
+          quantidade_real: item.quantidade_real,
+          avariado: item.avariado
         });
       } catch {
         failed.push(item);
@@ -162,7 +165,7 @@ const InventarioFilialPage = () => {
   };
 
   const calcularABC = (itens: InventarioFilialItem[]): Record<string, 'A' | 'B' | 'C'> => {
-    const comSaldo = itens.map(item => ({ codigo: item.codigo_item, saldo: Math.abs(item.dep_real) }));
+    const comSaldo = itens.map(item => ({ codigo: item.codigo_item, saldo: Math.abs(item.deposito_2) }));
     comSaldo.sort((a, b) => b.saldo - a.saldo);
     const total = comSaldo.reduce((sum, i) => sum + i.saldo, 0);
     if (total === 0) return {};
@@ -191,7 +194,7 @@ const InventarioFilialPage = () => {
     }
 
     // Filtrar itens com saldo != 0
-    filtered = filtered.filter(item => item.deposito_2 !== 0 || item.producoes_aberto !== 0);
+    filtered = filtered.filter(item => item.deposito_2 !== 0);
 
     const novoAbcMap = calcularABC(filtered);
     setAbcMap(novoAbcMap);
@@ -201,9 +204,9 @@ const InventarioFilialPage = () => {
     }
 
     if (contagemFilter === 'pendentes') {
-      filtered = filtered.filter(item => item.contagem === null || item.contagem === undefined);
+      filtered = filtered.filter(item => item.quantidade_real === null && item.avariado === null);
     } else if (contagemFilter === 'contados') {
-      filtered = filtered.filter(item => item.contagem !== null && item.contagem !== undefined);
+      filtered = filtered.filter(item => item.quantidade_real !== null || item.avariado !== null);
     }
 
     if (sortColumn) {
@@ -215,7 +218,7 @@ const InventarioFilialPage = () => {
           const order = { A: 1, B: 2, C: 3 };
           return ((order[novoAbcMap[a.codigo_item]] || 4) - (order[novoAbcMap[b.codigo_item]] || 4)) * dir;
         }
-        if (sortColumn === 'saldo') return (a.dep_real - b.dep_real) * dir;
+        if (sortColumn === 'saldo') return (a.deposito_2 - b.deposito_2) * dir;
         return 0;
       });
     }
@@ -223,30 +226,21 @@ const InventarioFilialPage = () => {
     setFilteredItems(filtered);
   };
 
-  const saveContagem = useCallback(async (codigoItem: string, value: number | null) => {
+  const saveContagem = useCallback(async (codigoItem: string, field: 'quantidade_real' | 'avariado', value: number | null) => {
     if (!inventario) return;
     setSavingItem(codigoItem);
     try {
       await api.put(`/inventario-filial/${inventario._id}/item/${codigoItem}`, {
-        contagem_fisica: value
-      });
-      setInventario(prev => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          itens: prev.itens.map(item =>
-            item.codigo_item === codigoItem
-              ? { ...item, contagem: value, contagem_data: new Date().toISOString() }
-              : item
-          )
-        };
+        [field]: value
       });
     } catch (error) {
       console.error('Erro ao salvar contagem (offline):', error);
+      const existing = getPendingQueue().find(q => q.codigoItem === codigoItem);
       addToPendingQueue({
         inventarioId: inventario._id,
         codigoItem,
-        contagem_fisica: value,
+        quantidade_real: field === 'quantidade_real' ? value : (existing?.quantidade_real ?? null),
+        avariado: field === 'avariado' ? value : (existing?.avariado ?? null),
         timestamp: Date.now()
       });
       setPendingCount(getPendingQueue().length);
@@ -255,19 +249,34 @@ const InventarioFilialPage = () => {
     }
   }, [inventario]);
 
-  const handleContagemChange = (codigoItem: string, rawValue: string) => {
+  const handleQuantidadeRealChange = (codigoItem: string, rawValue: string) => {
     const value = rawValue === '' ? null : parseFloat(rawValue);
     setInventario(prev => {
       if (!prev) return prev;
       return {
         ...prev,
         itens: prev.itens.map(item =>
-          item.codigo_item === codigoItem ? { ...item, contagem: value } : item
+          item.codigo_item === codigoItem ? { ...item, quantidade_real: value } : item
         )
       };
     });
-    if (debounceTimers.current[codigoItem]) clearTimeout(debounceTimers.current[codigoItem]);
-    debounceTimers.current[codigoItem] = setTimeout(() => saveContagem(codigoItem, value), 800);
+    if (debounceTimers.current[codigoItem + '_qr']) clearTimeout(debounceTimers.current[codigoItem + '_qr']);
+    debounceTimers.current[codigoItem + '_qr'] = setTimeout(() => saveContagem(codigoItem, 'quantidade_real', value), 800);
+  };
+
+  const handleAvariadoChange = (codigoItem: string, rawValue: string) => {
+    const value = rawValue === '' ? null : parseFloat(rawValue);
+    setInventario(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        itens: prev.itens.map(item =>
+          item.codigo_item === codigoItem ? { ...item, avariado: value } : item
+        )
+      };
+    });
+    if (debounceTimers.current[codigoItem + '_av']) clearTimeout(debounceTimers.current[codigoItem + '_av']);
+    debounceTimers.current[codigoItem + '_av'] = setTimeout(() => saveContagem(codigoItem, 'avariado', value), 800);
   };
 
   const handleObservacaoChange = (codigoItem: string, value: string) => {
@@ -293,9 +302,9 @@ const InventarioFilialPage = () => {
 
   const finalizarInventario = async () => {
     if (!inventario) return;
-    const pendentesCount = inventario.itens.filter(i => i.contagem === null || i.contagem === undefined).length;
-    const msg = pendentesCount > 0
-      ? `Ainda existem ${pendentesCount} itens sem contagem. Deseja finalizar mesmo assim?`
+    const pendentesCountFinal = inventario.itens.filter(i => i.quantidade_real === null && i.avariado === null).length;
+    const msg = pendentesCountFinal > 0
+      ? `Ainda existem ${pendentesCountFinal} itens sem contagem. Deseja finalizar mesmo assim?`
       : 'Deseja finalizar o inventário?';
     if (!confirm(msg)) return;
     try {
@@ -344,7 +353,7 @@ const InventarioFilialPage = () => {
   const formatDate = (dateStr: string): string => new Date(dateStr).toLocaleString('pt-BR');
 
   const totalItens = inventario?.itens.length || 0;
-  const contados = inventario?.itens.filter(i => i.contagem !== null && i.contagem !== undefined).length || 0;
+  const contados = inventario?.itens.filter(i => i.quantidade_real !== null || i.avariado !== null).length || 0;
   const pendentesCount = totalItens - contados;
   const progresso = totalItens > 0 ? Math.round((contados / totalItens) * 100) : 0;
 
@@ -520,9 +529,9 @@ const InventarioFilialPage = () => {
                   <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100" onClick={() => handleSort('saldo')}>
                     <div className="flex items-center justify-end gap-1">Depósito 2 {renderSortIcon('saldo')}</div>
                   </th>
-                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">OPS Abertas</th>
-                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Dep. Real</th>
-                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-36">Contagem</th>
+                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Qtd. Real</th>
+                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Avariado</th>
+                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Contagem Real</th>
                   <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Diferença</th>
                   <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Obs.</th>
                 </tr>
@@ -532,9 +541,11 @@ const InventarioFilialPage = () => {
                   <tr><td colSpan={10} className="px-4 py-8 text-center text-gray-500">Nenhum item encontrado</td></tr>
                 ) : (
                   filteredItems.map((item) => {
-                    const diferenca = item.contagem !== null && item.contagem !== undefined
-                      ? item.contagem - item.dep_real
-                      : null;
+                    const qtdReal = item.quantidade_real ?? 0;
+                    const avariado = item.avariado ?? 0;
+                    const temContagem = item.quantidade_real !== null || item.avariado !== null;
+                    const contagemReal = temContagem ? qtdReal + avariado : null;
+                    const diferenca = contagemReal !== null ? item.deposito_2 - contagemReal : null;
                     return (
                       <tr key={item.codigo_item} className="hover:bg-gray-50">
                         <td className="px-3 py-2 whitespace-nowrap text-sm font-mono text-gray-900">{item.codigo_item}</td>
@@ -550,31 +561,48 @@ const InventarioFilialPage = () => {
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600 hidden sm:table-cell">{item.unidade_medida}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900">{formatNumber(item.deposito_2)}</td>
-                        <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900 hidden md:table-cell">{formatNumber(item.producoes_aberto)}</td>
-                        <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-semibold text-blue-700">{formatNumber(item.dep_real)}</td>
                         <td className="px-3 py-2 whitespace-nowrap">
                           <div className="flex items-center space-x-1">
                             <input type="number" step="any"
-                              value={item.contagem !== null && item.contagem !== undefined ? item.contagem : ''}
-                              onChange={(e) => handleContagemChange(item.codigo_item, e.target.value)}
+                              value={item.quantidade_real !== null && item.quantidade_real !== undefined ? item.quantidade_real : ''}
+                              onChange={(e) => handleQuantidadeRealChange(item.codigo_item, e.target.value)}
                               disabled={inventario.status === 'finalizado'}
                               className={`w-24 px-2 py-1 border rounded text-sm text-right focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                                 inventario.status === 'finalizado' ? 'bg-gray-100 cursor-not-allowed' : ''
-                              } ${diferenca !== null && diferenca !== 0 ? 'border-orange-400 bg-orange-50' : ''}`}
+                              }`}
+                              placeholder="-" />
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <div className="flex items-center space-x-1">
+                            <input type="number" step="any"
+                              value={item.avariado !== null && item.avariado !== undefined ? item.avariado : ''}
+                              onChange={(e) => handleAvariadoChange(item.codigo_item, e.target.value)}
+                              disabled={inventario.status === 'finalizado'}
+                              className={`w-24 px-2 py-1 border rounded text-sm text-right focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${
+                                inventario.status === 'finalizado' ? 'bg-gray-100 cursor-not-allowed' : ''
+                              }`}
                               placeholder="-" />
                             {savingItem === item.codigo_item && (
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
                             )}
-                            {item.contagem !== null && item.contagem !== undefined && savingItem !== item.codigo_item && (
+                            {temContagem && savingItem !== item.codigo_item && (
                               <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
                             )}
                           </div>
                         </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-semibold text-blue-700">
+                          {contagemReal !== null ? formatNumber(contagemReal) : <span className="text-gray-300">-</span>}
+                        </td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-semibold">
                           {diferenca !== null ? (
-                            <span className={diferenca > 0 ? 'text-green-600' : diferenca < 0 ? 'text-red-600' : 'text-gray-500'}>
-                              {diferenca > 0 ? '+' : ''}{formatNumber(diferenca)}
-                            </span>
+                            diferenca === 0 ? (
+                              <span className="text-green-600 font-bold">Ok</span>
+                            ) : (
+                              <span className={diferenca > 0 ? 'text-green-600' : 'text-red-600'}>
+                                {diferenca > 0 ? '+' : ''}{formatNumber(diferenca)}
+                              </span>
+                            )
                           ) : (
                             <span className="text-gray-300">-</span>
                           )}
@@ -638,8 +666,8 @@ const InventarioFilialPage = () => {
                 <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2 mt-4">Resumo</h3>
                 <div className="bg-gray-50 p-4 rounded text-sm">
                   <p>Total de Itens: <strong>{filteredItems.length}</strong></p>
-                  <p>Contados: <strong>{filteredItems.filter(i => i.contagem !== null && i.contagem !== undefined).length}</strong></p>
-                  <p>Pendentes: <strong>{filteredItems.filter(i => i.contagem === null || i.contagem === undefined).length}</strong></p>
+                  <p>Contados: <strong>{filteredItems.filter(i => i.quantidade_real !== null || i.avariado !== null).length}</strong></p>
+                  <p>Pendentes: <strong>{filteredItems.filter(i => i.quantidade_real === null && i.avariado === null).length}</strong></p>
                   <p className="mt-1">Filtros: <strong>{getActiveFiltersLabel()}</strong></p>
                 </div>
               </div>
@@ -653,16 +681,20 @@ const InventarioFilialPage = () => {
                   <th className="border border-gray-300 px-2 py-2 text-center">ABC</th>
                   <th className="border border-gray-300 px-2 py-2 text-center">UM</th>
                   <th className="border border-gray-300 px-2 py-2 text-right">DEPÓSITO 2</th>
-                  <th className="border border-gray-300 px-2 py-2 text-right">OPS ABERTAS</th>
-                  <th className="border border-gray-300 px-2 py-2 text-right">DEP. REAL</th>
-                  <th className="border border-gray-300 px-2 py-2 text-right">CONTAGEM</th>
+                  <th className="border border-gray-300 px-2 py-2 text-right">QTD. REAL</th>
+                  <th className="border border-gray-300 px-2 py-2 text-right">AVARIADO</th>
+                  <th className="border border-gray-300 px-2 py-2 text-right">CONTAGEM REAL</th>
                   <th className="border border-gray-300 px-2 py-2 text-right">DIFERENÇA</th>
                   <th className="border border-gray-300 px-2 py-2 text-left">OBSERVAÇÕES</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredItems.map((item, index) => {
-                  const diferenca = item.contagem !== null && item.contagem !== undefined ? item.contagem - item.dep_real : null;
+                  const qtdReal = item.quantidade_real ?? 0;
+                  const avar = item.avariado ?? 0;
+                  const temContagem = item.quantidade_real !== null || item.avariado !== null;
+                  const contagemReal = temContagem ? qtdReal + avar : null;
+                  const diferenca = contagemReal !== null ? item.deposito_2 - contagemReal : null;
                   return (
                     <tr key={item.codigo_item} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                       <td className="border border-gray-300 px-2 py-1">{item.codigo_item}</td>
@@ -670,16 +702,20 @@ const InventarioFilialPage = () => {
                       <td className="border border-gray-300 px-2 py-1 text-center font-bold">{abcMap[item.codigo_item] || '-'}</td>
                       <td className="border border-gray-300 px-2 py-1 text-center">{item.unidade_medida}</td>
                       <td className="border border-gray-300 px-2 py-1 text-right">{formatNumber(item.deposito_2)}</td>
-                      <td className="border border-gray-300 px-2 py-1 text-right">{formatNumber(item.producoes_aberto)}</td>
-                      <td className="border border-gray-300 px-2 py-1 text-right font-semibold">{formatNumber(item.dep_real)}</td>
+                      <td className="border border-gray-300 px-2 py-1 text-right">
+                        {item.quantidade_real !== null ? formatNumber(item.quantidade_real) : '-'}
+                      </td>
+                      <td className="border border-gray-300 px-2 py-1 text-right">
+                        {item.avariado !== null ? formatNumber(item.avariado) : '-'}
+                      </td>
                       <td className="border border-gray-300 px-2 py-1 text-right font-semibold">
-                        {item.contagem !== null && item.contagem !== undefined ? formatNumber(item.contagem) : '-'}
+                        {contagemReal !== null ? formatNumber(contagemReal) : '-'}
                       </td>
                       <td className={`border border-gray-300 px-2 py-1 text-right font-semibold ${
                         diferenca !== null && diferenca > 0 ? 'text-green-600' :
                         diferenca !== null && diferenca < 0 ? 'text-red-600' : ''
                       }`}>
-                        {diferenca !== null ? `${diferenca > 0 ? '+' : ''}${formatNumber(diferenca)}` : '-'}
+                        {diferenca !== null ? (diferenca === 0 ? 'Ok' : `${diferenca > 0 ? '+' : ''}${formatNumber(diferenca)}`) : '-'}
                       </td>
                       <td className="border border-gray-300 px-2 py-1">{item.observacao || '-'}</td>
                     </tr>

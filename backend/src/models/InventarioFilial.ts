@@ -6,11 +6,12 @@ export interface IInventarioFilialItem {
   tipo: string;
   unidade_medida: string;
   deposito_2: number;
-  producoes_aberto: number;
-  dep_real: number;
-  contagem: number | null;
-  contagem_data?: Date;
-  contagem_usuario?: string;
+  quantidade_real: number | null;
+  avariado: number | null;
+  quantidade_real_data?: Date;
+  quantidade_real_usuario?: string;
+  avariado_data?: Date;
+  avariado_usuario?: string;
   observacao?: string;
 }
 
@@ -30,11 +31,12 @@ const InventarioFilialItemSchema = new Schema({
   tipo: { type: String, required: true },
   unidade_medida: { type: String, default: '' },
   deposito_2: { type: Number, default: 0 },
-  producoes_aberto: { type: Number, default: 0 },
-  dep_real: { type: Number, default: 0 },
-  contagem: { type: Number, default: null },
-  contagem_data: { type: Date },
-  contagem_usuario: { type: String },
+  quantidade_real: { type: Number, default: null },
+  avariado: { type: Number, default: null },
+  quantidade_real_data: { type: Date },
+  quantidade_real_usuario: { type: String },
+  avariado_data: { type: Date },
+  avariado_usuario: { type: String },
   observacao: { type: String, default: '' }
 });
 
