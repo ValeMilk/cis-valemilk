@@ -621,8 +621,8 @@ SELECT
         RTRIM(UPPER(A00.A00_FANTASIA)) AS Fornecedor,
         CONVERT(VARCHAR, M00.M00_ENTSAI, 103) AS [Data Entrada],
         M01.M01_QTD AS Quantidade,
-        FORMAT(M01.M01_PRECOU, 'N2', 'pt-BR') AS [Valor Unitario],
-        FORMAT(M01.M01_QTD * M01.M01_PRECOU, 'N2', 'pt-BR') AS [Valor Total]
+        M01.M01_PRECOU AS [Valor Unitario],
+        M01.M01_QTD * M01.M01_PRECOU AS [Valor Total]
     FROM dbo.M00
     INNER JOIN dbo.M01 ON M00.M00_ID = M01.M01_ID_M00
     INNER JOIN dbo.E02 ON E02.E02_ID = M01.M01_ID_E02
