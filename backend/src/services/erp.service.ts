@@ -373,7 +373,7 @@ export interface ERPItem {
   Fornecedor: string;
   Cod: number;
   Descricao: string;
-  'Dep. Aberto': string;
+  'Dep. Aberto (Interno)': string;
   'Dep. Fechado (Interno)': string;
   'Dep. Fechado (Externo)': string;
   'Saldo Total': string;

@@ -47,7 +47,7 @@ const mapERPItemToItem = (erpItem: ERPItem): Item => {
   const totalSaldo = parseFormattedNumber(erpItem['Saldo Total']);
   const giroMensal = parseFormattedNumber(erpItem['Giro Mensal']);
   const valorUltEntrada = parseFormattedNumber(erpItem['Valor Ult Entrada']);
-  const depAberto = parseFormattedNumber(erpItem['Dep. Aberto']);
+  const depAberto = parseFormattedNumber(erpItem['Dep. Aberto (Interno)']);
   const depFechadoInterno = parseFormattedNumber(erpItem['Dep. Fechado (Interno)']);
   const depFechadoExterno = parseFormattedNumber(erpItem['Dep. Fechado (Externo)']);
   const mediaGiroTrimestre = parseFormattedNumber(erpItem['Média Giro Trimestre']);
