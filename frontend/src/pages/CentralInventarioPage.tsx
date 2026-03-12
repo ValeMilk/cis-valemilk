@@ -687,6 +687,20 @@ const CentralInventarioPage = () => {
                 </div>
               </div>
             </div>
+            {(detalhe.visto_por_nome || detalhe.resolvido_por_nome) && (
+              <div className="mb-4 border rounded p-3 bg-gray-50 text-sm">
+                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Status do Relatório</h3>
+                {detalhe.visto_por_nome && (
+                  <p>✔ Visto por: <strong>{detalhe.visto_por_nome}</strong> em {formatDate(detalhe.visto_data!)}</p>
+                )}
+                {detalhe.resolvido_por_nome && (
+                  <>
+                    <p>✔ Resolvido por: <strong>{detalhe.resolvido_por_nome}</strong> em {formatDate(detalhe.resolvido_data!)}</p>
+                    {detalhe.resolvido_observacao && <p>Observação: <em>{detalhe.resolvido_observacao}</em></p>}
+                  </>
+                )}
+              </div>
+            )}
             <table className="w-full border-collapse border border-gray-300 text-xs">
               <thead>
                 <tr className="bg-purple-600 text-white">
@@ -1077,6 +1091,20 @@ const CentralInventarioPage = () => {
               </div>
             </div>
           </div>
+          {(detalhe.visto_por_nome || detalhe.resolvido_por_nome) && (
+            <div className="mb-4 border rounded p-3 bg-gray-50 text-sm">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Status do Relatório</h3>
+              {detalhe.visto_por_nome && (
+                <p>✔ Visto por: <strong>{detalhe.visto_por_nome}</strong> em {formatDate(detalhe.visto_data!)}</p>
+              )}
+              {detalhe.resolvido_por_nome && (
+                <>
+                  <p>✔ Resolvido por: <strong>{detalhe.resolvido_por_nome}</strong> em {formatDate(detalhe.resolvido_data!)}</p>
+                  {detalhe.resolvido_observacao && <p>Observação: <em>{detalhe.resolvido_observacao}</em></p>}
+                </>
+              )}
+            </div>
+          )}
 
           {/* Tabela para impressão */}
           <table className="w-full border-collapse border border-gray-300 text-xs">
