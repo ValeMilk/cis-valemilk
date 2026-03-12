@@ -196,7 +196,7 @@ const PedidoDetailPage = () => {
 
   const updateQuantidadeItem = (index: number, quantidade: number) => {
     const newItens = [...itensEditaveis];
-    newItens[index].quantidade_solicitada = Math.max(1, quantidade);
+    newItens[index].quantidade_solicitada = Math.max(0.01, quantidade);
     setItensEditaveis(newItens);
   };
 
@@ -638,9 +638,10 @@ const PedidoDetailPage = () => {
                       <td className="px-4 py-3 text-center">
                         <input
                           type="number"
-                          min="1"
+                          min="0.01"
+                          step="any"
                           value={item.quantidade_solicitada}
-                          onChange={(e) => updateQuantidadeItem(index, parseInt(e.target.value))}
+                          onChange={(e) => updateQuantidadeItem(index, parseFloat(e.target.value))}
                           className="w-20 border border-gray-300 rounded px-2 py-1 text-center"
                         />
                       </td>
