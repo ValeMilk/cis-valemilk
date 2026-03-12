@@ -182,7 +182,7 @@ router.get('/finalizados', authMiddleware, async (req, res) => {
     }
 
     const avarias = await Avaria.find(filtro)
-      .select('data_snapshot criado_por_nome itens')
+      .select('data_snapshot criado_por_nome itens visto_por_nome visto_data resolvido_por_nome resolvido_data resolvido_observacao')
       .sort({ data_snapshot: -1 });
 
     const resumo = avarias.map(av => ({
@@ -190,7 +190,12 @@ router.get('/finalizados', authMiddleware, async (req, res) => {
       data_snapshot: av.data_snapshot,
       criado_por_nome: av.criado_por_nome,
       total_itens: av.itens.length,
-      itens_contados: av.itens.filter(i => (i as any).contagem !== null).length
+      itens_contados: av.itens.filter(i => (i as any).contagem !== null).length,
+      visto_por_nome: av.visto_por_nome,
+      visto_data: av.visto_data,
+      resolvido_por_nome: av.resolvido_por_nome,
+      resolvido_data: av.resolvido_data,
+      resolvido_observacao: av.resolvido_observacao
     }));
 
     res.json(resumo);
@@ -224,6 +229,50 @@ router.delete('/:avariaId', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao descartar avaria:', error);
     res.status(500).json({ message: 'Erro ao descartar avaria' });
+  }
+});
+
+// PUT - Marcar como visto
+router.put('/:avariaId/visto', authMiddleware, async (req, res) => {
+  try {
+    const avaria = await Avaria.findById(req.params.avariaId);
+    if (!avaria) return res.status(404).json({ message: 'Avaria não encontrada' });
+
+    const user = (req as any).user;
+    const userDoc = await User.findById(user.id).select('nome');
+
+    avaria.visto_por = user.id;
+    avaria.visto_por_nome = userDoc?.nome || user.email;
+    avaria.visto_data = new Date();
+    await avaria.save();
+
+    res.json({ message: 'Avaria marcada como vista', avaria });
+  } catch (error) {
+    console.error('❌ Erro ao marcar visto:', error);
+    res.status(500).json({ message: 'Erro ao marcar como visto' });
+  }
+});
+
+// PUT - Marcar como resolvido (com observação)
+router.put('/:avariaId/resolvido', authMiddleware, async (req, res) => {
+  try {
+    const { observacao } = req.body;
+    const avaria = await Avaria.findById(req.params.avariaId);
+    if (!avaria) return res.status(404).json({ message: 'Avaria não encontrada' });
+
+    const user = (req as any).user;
+    const userDoc = await User.findById(user.id).select('nome');
+
+    avaria.resolvido_por = user.id;
+    avaria.resolvido_por_nome = userDoc?.nome || user.email;
+    avaria.resolvido_data = new Date();
+    avaria.resolvido_observacao = observacao || '';
+    await avaria.save();
+
+    res.json({ message: 'Avaria marcada como resolvida', avaria });
+  } catch (error) {
+    console.error('❌ Erro ao marcar resolvido:', error);
+    res.status(500).json({ message: 'Erro ao marcar como resolvido' });
   }
 });
 

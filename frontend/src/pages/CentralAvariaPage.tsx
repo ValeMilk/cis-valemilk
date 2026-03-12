@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import { AlertTriangle, Search, Eye, Printer, Calendar, ChevronLeft, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { AlertTriangle, Search, Eye, Printer, Calendar, ChevronLeft, ArrowUp, ArrowDown, ArrowUpDown, CheckCircle, ClipboardCheck, X } from 'lucide-react';
 import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import { PerfilEnum } from '../types';
 
 interface AvariaResumo {
   _id: string;
@@ -9,6 +11,11 @@ interface AvariaResumo {
   criado_por_nome: string;
   total_itens: number;
   itens_contados: number;
+  visto_por_nome?: string;
+  visto_data?: string;
+  resolvido_por_nome?: string;
+  resolvido_data?: string;
+  resolvido_observacao?: string;
 }
 
 interface AvariaItemDetail {
@@ -27,9 +34,15 @@ interface AvariaDetalhe {
   status: string;
   criado_por_nome: string;
   itens: AvariaItemDetail[];
+  visto_por_nome?: string;
+  visto_data?: string;
+  resolvido_por_nome?: string;
+  resolvido_data?: string;
+  resolvido_observacao?: string;
 }
 
 const CentralAvariaPage = () => {
+  const { user } = useAuth();
   const [avarias, setAvarias] = useState<AvariaResumo[]>([]);
   const [loading, setLoading] = useState(true);
   const [detalhe, setDetalhe] = useState<AvariaDetalhe | null>(null);
@@ -39,6 +52,9 @@ const CentralAvariaPage = () => {
   const [statusFilter, setStatusFilter] = useState<'todos' | 'contados' | 'com_divergencia' | 'sem_divergencia'>('todos');
   const [tipoFilter, setTipoFilter] = useState<string>('');
   const [sortDiferenca, setSortDiferenca] = useState<'none' | 'asc' | 'desc'>('none');
+  const [showResolvidoModal, setShowResolvidoModal] = useState(false);
+  const [resolvidoObs, setResolvidoObs] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -67,8 +83,16 @@ const CentralAvariaPage = () => {
   const abrirDetalhe = async (id: string) => {
     try {
       setLoading(true);
+      const av = avarias.find(a => a._id === id);
       const response = await api.get(`/avaria/${id}`);
-      setDetalhe(response.data);
+      setDetalhe({
+        ...response.data,
+        visto_por_nome: av?.visto_por_nome || response.data.visto_por_nome,
+        visto_data: av?.visto_data || response.data.visto_data,
+        resolvido_por_nome: av?.resolvido_por_nome || response.data.resolvido_por_nome,
+        resolvido_data: av?.resolvido_data || response.data.resolvido_data,
+        resolvido_observacao: av?.resolvido_observacao || response.data.resolvido_observacao,
+      });
     } catch (error) {
       console.error('Erro ao buscar detalhe:', error);
       alert('Erro ao carregar avaria');
@@ -83,6 +107,8 @@ const CentralAvariaPage = () => {
     setStatusFilter('todos');
     setTipoFilter('');
     setSortDiferenca('none');
+    setShowResolvidoModal(false);
+    setResolvidoObs('');
   };
 
   const handlePrint = useReactToPrint({
@@ -176,6 +202,42 @@ const CentralAvariaPage = () => {
     return mapa;
   };
 
+  const canDoActions = user && (user.perfil === PerfilEnum.DIRETORIA || user.perfil === PerfilEnum.COMPRADOR || user.perfil === PerfilEnum.ADMIN);
+
+  const handleVisto = async () => {
+    if (!detalhe || actionLoading) return;
+    try {
+      setActionLoading(true);
+      await api.put(`/avaria/${detalhe._id}/visto`);
+      const response = await api.get(`/avaria/${detalhe._id}`);
+      setDetalhe(prev => prev ? { ...prev, visto_por_nome: response.data.visto_por_nome, visto_data: response.data.visto_data } : null);
+      fetchFinalizados(dataInicio || undefined, dataFim || undefined);
+    } catch (error) {
+      console.error('Erro ao marcar visto:', error);
+      alert('Erro ao marcar como visto');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleResolvido = async () => {
+    if (!detalhe || actionLoading) return;
+    try {
+      setActionLoading(true);
+      await api.put(`/avaria/${detalhe._id}/resolvido`, { observacao: resolvidoObs });
+      const response = await api.get(`/avaria/${detalhe._id}`);
+      setDetalhe(prev => prev ? { ...prev, resolvido_por_nome: response.data.resolvido_por_nome, resolvido_data: response.data.resolvido_data, resolvido_observacao: response.data.resolvido_observacao } : null);
+      setShowResolvidoModal(false);
+      setResolvidoObs('');
+      fetchFinalizados(dataInicio || undefined, dataFim || undefined);
+    } catch (error) {
+      console.error('Erro ao marcar resolvido:', error);
+      alert('Erro ao marcar como resolvido');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // ==== LISTA DE AVARIAS ====
   if (!detalhe) {
     return (
@@ -245,6 +307,7 @@ const CentralAvariaPage = () => {
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Total Itens</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Contados</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Cobertura</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
                 </tr>
               </thead>
@@ -265,6 +328,15 @@ const CentralAvariaPage = () => {
                         }`}>
                           {cobertura}%
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {av.resolvido_por_nome ? (
+                          <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">Resolvido</span>
+                        ) : av.visto_por_nome ? (
+                          <span className="px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">Visto</span>
+                        ) : (
+                          <span className="px-2 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-500">Pendente</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <button
@@ -301,10 +373,55 @@ const CentralAvariaPage = () => {
             <p className="text-sm text-gray-500">{formatDate(detalhe.data_snapshot)} • Por: {detalhe.criado_por_nome}</p>
           </div>
         </div>
-        <button onClick={() => handlePrint()} className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-          <Printer size={18} /><span>Exportar PDF</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {canDoActions && (
+            <>
+              <button
+                onClick={handleVisto}
+                disabled={!!detalhe.visto_por_nome || actionLoading}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium ${
+                  detalhe.visto_por_nome ? 'bg-blue-100 text-blue-700 cursor-default' : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                <CheckCircle size={18} />
+                <span>{detalhe.visto_por_nome ? `Visto por ${detalhe.visto_por_nome}` : 'Visto'}</span>
+              </button>
+              <button
+                onClick={() => setShowResolvidoModal(true)}
+                disabled={!!detalhe.resolvido_por_nome || actionLoading}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium ${
+                  detalhe.resolvido_por_nome ? 'bg-green-100 text-green-700 cursor-default' : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
+              >
+                <ClipboardCheck size={18} />
+                <span>{detalhe.resolvido_por_nome ? `Resolvido por ${detalhe.resolvido_por_nome}` : 'Resolvido'}</span>
+              </button>
+            </>
+          )}
+          <button onClick={() => handlePrint()} className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+            <Printer size={18} /><span>Exportar PDF</span>
+          </button>
+        </div>
       </div>
+
+      {/* Status info */}
+      {(detalhe.visto_por_nome || detalhe.resolvido_por_nome) && (
+        <div className="bg-white rounded-lg shadow p-4 flex flex-wrap gap-4 text-sm">
+          {detalhe.visto_por_nome && (
+            <div className="flex items-center gap-2">
+              <CheckCircle size={16} className="text-blue-600" />
+              <span className="text-gray-600">Visto por <strong>{detalhe.visto_por_nome}</strong> em {formatDate(detalhe.visto_data!)}</span>
+            </div>
+          )}
+          {detalhe.resolvido_por_nome && (
+            <div className="flex items-center gap-2">
+              <ClipboardCheck size={16} className="text-green-600" />
+              <span className="text-gray-600">Resolvido por <strong>{detalhe.resolvido_por_nome}</strong> em {formatDate(detalhe.resolvido_data!)}</span>
+              {detalhe.resolvido_observacao && <span className="text-gray-500 italic">— "{detalhe.resolvido_observacao}"</span>}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Filtros */}
       <div className="bg-white rounded-lg shadow p-4">
@@ -506,6 +623,33 @@ const CentralAvariaPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal Resolvido */}
+      {showResolvidoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-800">Marcar como Resolvido</h3>
+              <button onClick={() => { setShowResolvidoModal(false); setResolvidoObs(''); }} className="p-1 hover:bg-gray-100 rounded"><X size={20} /></button>
+            </div>
+            <p className="text-sm text-gray-600 mb-3">Adicione uma observação sobre a resolução desta avaria:</p>
+            <textarea
+              value={resolvidoObs}
+              onChange={(e) => setResolvidoObs(e.target.value)}
+              placeholder="Ex: Itens descartados, diferenças ajustadas..."
+              className="w-full border rounded-lg px-3 py-2 h-28 resize-none focus:ring-2 focus:ring-green-500 focus:outline-none"
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => { setShowResolvidoModal(false); setResolvidoObs(''); }}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancelar</button>
+              <button onClick={handleResolvido} disabled={actionLoading}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
+                {actionLoading ? 'Salvando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -240,7 +240,7 @@ router.get('/finalizados', authMiddleware, async (req, res) => {
     }
 
     const inventarios = await Inventario.find(filtro)
-      .select('data_snapshot criado_por_nome itens')
+      .select('data_snapshot criado_por_nome itens visto_por_nome visto_data resolvido_por_nome resolvido_data resolvido_observacao')
       .sort({ data_snapshot: -1 });
 
     const resumo = inventarios.map(inv => ({
@@ -252,7 +252,12 @@ router.get('/finalizados', authMiddleware, async (req, res) => {
         (i as any).contagem_aberto !== null ||
         (i as any).contagem_fechado_ext !== null ||
         (i as any).contagem_fechado_int !== null
-      ).length
+      ).length,
+      visto_por_nome: inv.visto_por_nome,
+      visto_data: inv.visto_data,
+      resolvido_por_nome: inv.resolvido_por_nome,
+      resolvido_data: inv.resolvido_data,
+      resolvido_observacao: inv.resolvido_observacao
     }));
 
     res.json(resumo);
@@ -296,6 +301,50 @@ router.delete('/:inventarioId', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao descartar inventário:', error);
     res.status(500).json({ message: 'Erro ao descartar inventário' });
+  }
+});
+
+// PUT - Marcar como visto
+router.put('/:inventarioId/visto', authMiddleware, async (req, res) => {
+  try {
+    const inventario = await Inventario.findById(req.params.inventarioId);
+    if (!inventario) return res.status(404).json({ message: 'Inventário não encontrado' });
+
+    const user = (req as any).user;
+    const userDoc = await User.findById(user.id).select('nome');
+
+    inventario.visto_por = user.id;
+    inventario.visto_por_nome = userDoc?.nome || user.email;
+    inventario.visto_data = new Date();
+    await inventario.save();
+
+    res.json({ message: 'Inventário marcado como visto', inventario });
+  } catch (error) {
+    console.error('❌ Erro ao marcar visto:', error);
+    res.status(500).json({ message: 'Erro ao marcar como visto' });
+  }
+});
+
+// PUT - Marcar como resolvido (com observação)
+router.put('/:inventarioId/resolvido', authMiddleware, async (req, res) => {
+  try {
+    const { observacao } = req.body;
+    const inventario = await Inventario.findById(req.params.inventarioId);
+    if (!inventario) return res.status(404).json({ message: 'Inventário não encontrado' });
+
+    const user = (req as any).user;
+    const userDoc = await User.findById(user.id).select('nome');
+
+    inventario.resolvido_por = user.id;
+    inventario.resolvido_por_nome = userDoc?.nome || user.email;
+    inventario.resolvido_data = new Date();
+    inventario.resolvido_observacao = observacao || '';
+    await inventario.save();
+
+    res.json({ message: 'Inventário marcado como resolvido', inventario });
+  } catch (error) {
+    console.error('❌ Erro ao marcar resolvido:', error);
+    res.status(500).json({ message: 'Erro ao marcar como resolvido' });
   }
 });
 
