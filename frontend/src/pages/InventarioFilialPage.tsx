@@ -545,7 +545,7 @@ const InventarioFilialPage = () => {
                     const avariado = item.avariado ?? 0;
                     const temContagem = item.quantidade_real !== null || item.avariado !== null;
                     const contagemReal = temContagem ? qtdReal + avariado : null;
-                    const diferenca = contagemReal !== null ? item.deposito_2 - contagemReal : null;
+                    const diferenca = contagemReal !== null ? Math.round((item.deposito_2 - contagemReal) * 100) / 100 : null;
                     return (
                       <tr key={item.codigo_item} className="hover:bg-gray-50">
                         <td className="px-3 py-2 whitespace-nowrap text-sm font-mono text-gray-900">{item.codigo_item}</td>
@@ -694,7 +694,7 @@ const InventarioFilialPage = () => {
                   const avar = item.avariado ?? 0;
                   const temContagem = item.quantidade_real !== null || item.avariado !== null;
                   const contagemReal = temContagem ? qtdReal + avar : null;
-                  const diferenca = contagemReal !== null ? item.deposito_2 - contagemReal : null;
+                  const diferenca = contagemReal !== null ? Math.round((item.deposito_2 - contagemReal) * 100) / 100 : null;
                   return (
                     <tr key={item.codigo_item} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                       <td className="border border-gray-300 px-2 py-1">{item.codigo_item}</td>

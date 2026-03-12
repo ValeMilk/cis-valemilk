@@ -207,7 +207,7 @@ router.get('/finalizados', authMiddleware, async (req, res) => {
       data_snapshot: inv.data_snapshot,
       criado_por_nome: inv.criado_por_nome,
       total_itens: inv.itens.length,
-      itens_contados: inv.itens.filter(i => (i as any).contagem !== null).length
+      itens_contados: inv.itens.filter(i => (i as any).quantidade_real !== null || (i as any).avariado !== null).length
     }));
 
     res.json(resumo);

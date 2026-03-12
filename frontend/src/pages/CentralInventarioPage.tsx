@@ -9,6 +9,7 @@ interface InventarioResumo {
   criado_por_nome: string;
   total_itens: number;
   itens_contados: number;
+  origem: 'Fábrica' | 'Filial';
 }
 
 interface InventarioItem {
@@ -34,6 +35,18 @@ interface InventarioDetalhe {
   status: string;
   criado_por_nome: string;
   itens: InventarioItem[];
+  origem?: 'Fábrica' | 'Filial';
+}
+
+interface InventarioFilialItemDetail {
+  codigo_item: string;
+  descricao: string;
+  tipo: string;
+  unidade_medida: string;
+  deposito_2: number;
+  quantidade_real: number | null;
+  avariado: number | null;
+  observacao?: string;
 }
 
 const CentralInventarioPage = () => {
@@ -58,8 +71,14 @@ const CentralInventarioPage = () => {
       const params: any = {};
       if (inicio) params.dataInicio = inicio;
       if (fim) params.dataFim = fim;
-      const response = await api.get('/inventario/finalizados', { params });
-      setInventarios(response.data);
+      const [resFabrica, resFilial] = await Promise.all([
+        api.get('/inventario/finalizados', { params }),
+        api.get('/inventario-filial/finalizados', { params })
+      ]);
+      const fabrica = resFabrica.data.map((inv: any) => ({ ...inv, origem: 'Fábrica' }));
+      const filial = resFilial.data.map((inv: any) => ({ ...inv, origem: 'Filial' }));
+      const todos = [...fabrica, ...filial].sort((a: any, b: any) => new Date(b.data_snapshot).getTime() - new Date(a.data_snapshot).getTime());
+      setInventarios(todos);
     } catch (error) {
       console.error('Erro ao buscar inventários:', error);
     } finally {
@@ -74,8 +93,10 @@ const CentralInventarioPage = () => {
   const abrirDetalhe = async (id: string) => {
     try {
       setLoading(true);
-      const response = await api.get(`/inventario/${id}`);
-      setDetalhe(response.data);
+      const inv = inventarios.find(i => i._id === id);
+      const endpoint = inv?.origem === 'Filial' ? `/inventario-filial/${id}` : `/inventario/${id}`;
+      const response = await api.get(endpoint);
+      setDetalhe({ ...response.data, origem: inv?.origem || 'Fábrica' });
     } catch (error) {
       console.error('Erro ao buscar detalhe:', error);
       alert('Erro ao carregar inventário');
@@ -274,6 +295,7 @@ const CentralInventarioPage = () => {
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Responsável</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Origem</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Total Itens</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Contados</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Cobertura</th>
@@ -287,6 +309,13 @@ const CentralInventarioPage = () => {
                     <tr key={inv._id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm text-gray-900">{formatDate(inv.data_snapshot)}</td>
                       <td className="px-4 py-3 text-sm text-gray-700">{inv.criado_por_nome}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                          inv.origem === 'Fábrica' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
+                        }`}>
+                          {inv.origem}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-sm text-center font-medium">{inv.total_itens}</td>
                       <td className="px-4 py-3 text-sm text-center text-green-600 font-medium">{inv.itens_contados}</td>
                       <td className="px-4 py-3 text-center">
@@ -318,7 +347,262 @@ const CentralInventarioPage = () => {
     );
   }
 
-  // ==== DETALHE DO INVENTÁRIO (Relatório) ====
+  // ==== DETALHE DO INVENTÁRIO FILIAL ====
+  if (detalhe.origem === 'Filial') {
+    const filialItens = (detalhe as any).itens as InventarioFilialItemDetail[];
+    const filialFiltered = filialItens.filter(i => {
+      if (i.deposito_2 === 0) return false;
+      if (searchTerm) {
+        const lower = searchTerm.toLowerCase();
+        if (!i.descricao.toLowerCase().includes(lower) && !i.codigo_item.toLowerCase().includes(lower)) return false;
+      }
+      if (statusFilter === 'contados') return i.quantidade_real !== null || i.avariado !== null;
+      if (statusFilter === 'com_divergencia') {
+        const temC = i.quantidade_real !== null || i.avariado !== null;
+        if (!temC) return false;
+        const cr = (i.quantidade_real ?? 0) + (i.avariado ?? 0);
+        return Math.abs(Math.round((i.deposito_2 - cr) * 100) / 100) > 0;
+      }
+      if (statusFilter === 'sem_divergencia') {
+        const temC = i.quantidade_real !== null || i.avariado !== null;
+        if (!temC) return false;
+        const cr = (i.quantidade_real ?? 0) + (i.avariado ?? 0);
+        return Math.round((i.deposito_2 - cr) * 100) / 100 === 0;
+      }
+      return true;
+    });
+
+    const filialAbcMap = (() => {
+      const comSaldo = filialFiltered.map(item => ({ codigo: item.codigo_item, saldo: Math.abs(item.deposito_2) }));
+      comSaldo.sort((a, b) => b.saldo - a.saldo);
+      const total = comSaldo.reduce((sum, i) => sum + i.saldo, 0);
+      if (total === 0) return {} as Record<string, 'A' | 'B' | 'C'>;
+      let acumulado = 0;
+      const mapa: Record<string, 'A' | 'B' | 'C'> = {};
+      for (const item of comSaldo) {
+        acumulado += item.saldo;
+        const pct = (acumulado / total) * 100;
+        if (pct <= 80) mapa[item.codigo] = 'A';
+        else if (pct <= 95) mapa[item.codigo] = 'B';
+        else mapa[item.codigo] = 'C';
+      }
+      return mapa;
+    })();
+
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center space-x-3">
+            <button onClick={voltarLista} className="p-2 hover:bg-gray-200 rounded-lg"><ChevronLeft size={24} /></button>
+            <Archive className="text-purple-600" size={28} />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">Relatório de Inventário <span className="text-purple-600">(Filial)</span></h1>
+              <p className="text-sm text-gray-500">{formatDate(detalhe.data_snapshot)} • Por: {detalhe.criado_por_nome}</p>
+            </div>
+          </div>
+          <button onClick={() => handlePrint()} className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+            <Printer size={18} /><span>Exportar PDF</span>
+          </button>
+        </div>
+
+        {/* Filtros */}
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+              <input type="text" placeholder="Buscar código ou descrição..." value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500" />
+            </div>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500">
+              <option value="todos">Todos os Itens</option>
+              <option value="contados">Somente Contados</option>
+              <option value="com_divergencia">Com Divergência</option>
+              <option value="sem_divergencia">Sem Divergência</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Resumo */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="bg-white rounded-lg shadow p-4 text-center">
+            <p className="text-sm text-gray-500">Total Itens</p>
+            <p className="text-2xl font-bold text-purple-600">{filialFiltered.length}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 text-center">
+            <p className="text-sm text-gray-500">Contados</p>
+            <p className="text-2xl font-bold text-green-600">{filialFiltered.filter(i => i.quantidade_real !== null || i.avariado !== null).length}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 text-center">
+            <p className="text-sm text-gray-500">Com Divergência</p>
+            <p className="text-2xl font-bold text-orange-600">{filialFiltered.filter(i => {
+              const temC = i.quantidade_real !== null || i.avariado !== null;
+              if (!temC) return false;
+              const cr = (i.quantidade_real ?? 0) + (i.avariado ?? 0);
+              return Math.abs(Math.round((i.deposito_2 - cr) * 100) / 100) > 0;
+            }).length}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 text-center">
+            <p className="text-sm text-gray-500">Sem Divergência</p>
+            <p className="text-2xl font-bold text-gray-600">{filialFiltered.filter(i => {
+              const temC = i.quantidade_real !== null || i.avariado !== null;
+              if (!temC) return false;
+              const cr = (i.quantidade_real ?? 0) + (i.avariado ?? 0);
+              return Math.round((i.deposito_2 - cr) * 100) / 100 === 0;
+            }).length}</p>
+          </div>
+        </div>
+
+        {/* Tabela */}
+        <div className="bg-white rounded-lg shadow overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descrição</th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">ABC</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">UM</th>
+                <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Depósito 2</th>
+                <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Qtd. Real</th>
+                <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Avariado</th>
+                <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Contagem Real</th>
+                <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Diferença</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Observações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {filialFiltered.length === 0 ? (
+                <tr><td colSpan={10} className="px-4 py-8 text-center text-gray-500">Nenhum item encontrado</td></tr>
+              ) : filialFiltered.map((item) => {
+                const qtdR = item.quantidade_real ?? 0;
+                const avar = item.avariado ?? 0;
+                const temC = item.quantidade_real !== null || item.avariado !== null;
+                const contagemReal = temC ? qtdR + avar : null;
+                const dif = contagemReal !== null ? Math.round((item.deposito_2 - contagemReal) * 100) / 100 : null;
+                return (
+                  <tr key={item.codigo_item} className="hover:bg-gray-50">
+                    <td className="px-3 py-2 text-sm font-mono">{item.codigo_item}</td>
+                    <td className="px-3 py-2 text-sm max-w-xs truncate" title={item.descricao}>{item.descricao}</td>
+                    <td className="px-3 py-2 text-sm text-center">
+                      {filialAbcMap[item.codigo_item] && (
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                          filialAbcMap[item.codigo_item] === 'A' ? 'bg-red-100 text-red-700' :
+                          filialAbcMap[item.codigo_item] === 'B' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-green-100 text-green-700'
+                        }`}>{filialAbcMap[item.codigo_item]}</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-sm text-gray-600">{item.unidade_medida}</td>
+                    <td className="px-3 py-2 text-sm text-right">{formatNumber(item.deposito_2)}</td>
+                    <td className="px-3 py-2 text-sm text-right">{item.quantidade_real !== null ? formatNumber(item.quantidade_real) : <span className="text-gray-300">-</span>}</td>
+                    <td className="px-3 py-2 text-sm text-right">{item.avariado !== null ? formatNumber(item.avariado) : <span className="text-gray-300">-</span>}</td>
+                    <td className="px-3 py-2 text-sm text-right font-semibold text-blue-700">{contagemReal !== null ? formatNumber(contagemReal) : <span className="text-gray-300">-</span>}</td>
+                    <td className="px-3 py-2 text-sm text-right font-semibold">
+                      {dif !== null ? (
+                        dif === 0 ? <span className="text-green-600 font-bold">Ok</span> :
+                        <span className={dif > 0 ? 'text-green-600' : 'text-red-600'}>{dif > 0 ? '+' : ''}{formatNumber(dif)}</span>
+                      ) : <span className="text-gray-300">-</span>}
+                    </td>
+                    <td className="px-3 py-2 text-sm text-gray-600 max-w-xs truncate" title={item.observacao || ''}>{item.observacao || '-'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <div className="px-4 py-3 bg-gray-50 text-sm text-gray-500">Exibindo {filialFiltered.length} itens</div>
+        </div>
+
+        {/* PRINT VIEW Filial */}
+        <div style={{ display: 'none' }}>
+          <div ref={printRef} className="p-8 bg-white">
+            <div className="border-b-4 border-purple-600 pb-6 mb-6">
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-4">
+                  <img src="/assets/valemilk-logo.png" alt="Vale Milk" className="h-16 w-auto" />
+                  <p className="text-sm text-gray-600">Relatório de Inventário Filial</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-bold text-gray-800">Inventário Filial - Depósito 2</div>
+                  <div className="text-sm text-gray-600 mt-1">Data: {formatDate(detalhe.data_snapshot)}</div>
+                  <div className="text-sm text-gray-600">Responsável: {detalhe.criado_por_nome}</div>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-6 mb-6">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Empresa</h3>
+                <div className="bg-gray-50 p-4 rounded">
+                  <p className="font-semibold text-gray-800">KM CACAU INDÚSTRIA E COMERCIO DE LATICINIOS LTDA</p>
+                  <p className="text-sm text-gray-600 mt-1">CNPJ: 02.518.353/0001-03</p>
+                  <p className="text-sm text-gray-600">AV. JUSCELINO KUBITSCHEK, S/N - OMBREIRA</p>
+                  <p className="text-sm text-gray-600">PENTECOSTE - CEARÁ</p>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Depósito</h3>
+                <div className="bg-purple-50 p-4 rounded border-l-4 border-purple-600">
+                  <p className="font-semibold text-purple-900">Depósito 2 (Filial)</p>
+                </div>
+                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2 mt-4">Resumo</h3>
+                <div className="bg-gray-50 p-4 rounded text-sm">
+                  <p>Total de Itens: <strong>{filialFiltered.length}</strong></p>
+                  <p>Contados: <strong>{filialFiltered.filter(i => i.quantidade_real !== null || i.avariado !== null).length}</strong></p>
+                  <p>Filtro: <strong>{getStatusFilterLabel()}</strong></p>
+                </div>
+              </div>
+            </div>
+            <table className="w-full border-collapse border border-gray-300 text-xs">
+              <thead>
+                <tr className="bg-purple-600 text-white">
+                  <th className="border border-gray-300 px-2 py-2 text-left">CÓDIGO</th>
+                  <th className="border border-gray-300 px-2 py-2 text-left">DESCRIÇÃO</th>
+                  <th className="border border-gray-300 px-2 py-2 text-center">ABC</th>
+                  <th className="border border-gray-300 px-2 py-2 text-center">UM</th>
+                  <th className="border border-gray-300 px-2 py-2 text-right">DEPÓSITO 2</th>
+                  <th className="border border-gray-300 px-2 py-2 text-right">QTD. REAL</th>
+                  <th className="border border-gray-300 px-2 py-2 text-right">AVARIADO</th>
+                  <th className="border border-gray-300 px-2 py-2 text-right">CONTAGEM REAL</th>
+                  <th className="border border-gray-300 px-2 py-2 text-right">DIFERENÇA</th>
+                  <th className="border border-gray-300 px-2 py-2 text-left">OBSERVAÇÕES</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filialFiltered.map((item, index) => {
+                  const qtdR = item.quantidade_real ?? 0;
+                  const avar = item.avariado ?? 0;
+                  const temC = item.quantidade_real !== null || item.avariado !== null;
+                  const contagemReal = temC ? qtdR + avar : null;
+                  const dif = contagemReal !== null ? Math.round((item.deposito_2 - contagemReal) * 100) / 100 : null;
+                  return (
+                    <tr key={item.codigo_item} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      <td className="border border-gray-300 px-2 py-1">{item.codigo_item}</td>
+                      <td className="border border-gray-300 px-2 py-1">{item.descricao}</td>
+                      <td className="border border-gray-300 px-2 py-1 text-center font-bold">{filialAbcMap[item.codigo_item] || '-'}</td>
+                      <td className="border border-gray-300 px-2 py-1 text-center">{item.unidade_medida}</td>
+                      <td className="border border-gray-300 px-2 py-1 text-right">{formatNumber(item.deposito_2)}</td>
+                      <td className="border border-gray-300 px-2 py-1 text-right">{item.quantidade_real !== null ? formatNumber(item.quantidade_real) : '-'}</td>
+                      <td className="border border-gray-300 px-2 py-1 text-right">{item.avariado !== null ? formatNumber(item.avariado) : '-'}</td>
+                      <td className="border border-gray-300 px-2 py-1 text-right font-semibold">{contagemReal !== null ? formatNumber(contagemReal) : '-'}</td>
+                      <td className={`border border-gray-300 px-2 py-1 text-right font-semibold ${
+                        dif !== null && dif > 0 ? 'text-green-600' : dif !== null && dif < 0 ? 'text-red-600' : ''
+                      }`}>{dif !== null ? (dif === 0 ? 'Ok' : `${dif > 0 ? '+' : ''}${formatNumber(dif)}`) : '-'}</td>
+                      <td className="border border-gray-300 px-2 py-1">{item.observacao || '-'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <div className="mt-6 text-center text-xs text-gray-500">
+              <p className="mt-1">Para mais informações, entre em contato: compras@valemilk.com.br</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ==== DETALHE DO INVENTÁRIO FÁBRICA (Relatório) ====
   const filteredItems = getFilteredItems();
   const abcMap = calcularABC(filteredItems);
 
@@ -332,7 +616,7 @@ const CentralInventarioPage = () => {
           </button>
           <Archive className="text-blue-600" size={28} />
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Relatório de Inventário</h1>
+            <h1 className="text-2xl font-bold text-gray-800">Relatório de Inventário <span className="text-blue-600">(Fábrica)</span></h1>
             <p className="text-sm text-gray-500">
               {formatDate(detalhe.data_snapshot)} • Por: {detalhe.criado_por_nome}
             </p>
