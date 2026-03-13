@@ -8,6 +8,8 @@ interface PendingContagem {
   codigoItem: string;
   contagem_fisica: number | null;
   deposito: string;
+  volumes_fechados?: number | null;
+  unitarios_avulsos?: number | null;
   timestamp: number;
 }
 
@@ -145,7 +147,9 @@ const InventarioPage = () => {
       try {
         await api.put(`/inventario/${item.inventarioId}/item/${item.codigoItem}`, {
           contagem_fisica: item.contagem_fisica,
-          deposito: item.deposito
+          deposito: item.deposito,
+          volumes_fechados: item.volumes_fechados,
+          unitarios_avulsos: item.unitarios_avulsos
         });
       } catch {
         failed.push(item);
@@ -367,6 +371,8 @@ const InventarioPage = () => {
         codigoItem,
         contagem_fisica: value,
         deposito: depositoFilter,
+        volumes_fechados: volumesFechados,
+        unitarios_avulsos: unitariosAvulsos,
         timestamp: Date.now()
       });
       setPendingCount(getPendingQueue().length);

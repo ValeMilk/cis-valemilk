@@ -8,6 +8,10 @@ interface PendingContagem {
   codigoItem: string;
   quantidade_real?: number | null;
   avariado?: number | null;
+  volumes_fechados_real?: number | null;
+  unitarios_avulsos_real?: number | null;
+  volumes_fechados_avariado?: number | null;
+  unitarios_avulsos_avariado?: number | null;
   timestamp: number;
 }
 
@@ -124,7 +128,11 @@ const InventarioFilialPage = () => {
       try {
         await api.put(`/inventario-filial/${item.inventarioId}/item/${item.codigoItem}`, {
           quantidade_real: item.quantidade_real,
-          avariado: item.avariado
+          avariado: item.avariado,
+          volumes_fechados_real: item.volumes_fechados_real,
+          unitarios_avulsos_real: item.unitarios_avulsos_real,
+          volumes_fechados_avariado: item.volumes_fechados_avariado,
+          unitarios_avulsos_avariado: item.unitarios_avulsos_avariado
         });
       } catch {
         failed.push(item);
@@ -260,6 +268,10 @@ const InventarioFilialPage = () => {
         codigoItem,
         quantidade_real: field === 'quantidade_real' ? value : (existing?.quantidade_real ?? null),
         avariado: field === 'avariado' ? value : (existing?.avariado ?? null),
+        volumes_fechados_real: field === 'quantidade_real' ? (vf ?? null) : (existing?.volumes_fechados_real ?? null),
+        unitarios_avulsos_real: field === 'quantidade_real' ? (ua ?? null) : (existing?.unitarios_avulsos_real ?? null),
+        volumes_fechados_avariado: field === 'avariado' ? (vf ?? null) : (existing?.volumes_fechados_avariado ?? null),
+        unitarios_avulsos_avariado: field === 'avariado' ? (ua ?? null) : (existing?.unitarios_avulsos_avariado ?? null),
         timestamp: Date.now()
       });
       setPendingCount(getPendingQueue().length);

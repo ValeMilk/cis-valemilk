@@ -1,7 +1,40 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import { RefreshCw, Search, PackageCheck, Clock, ArrowUp, ArrowDown, ArrowUpDown, CheckCircle, Printer } from 'lucide-react';
+import { RefreshCw, Search, PackageCheck, Clock, ArrowUp, ArrowDown, ArrowUpDown, CheckCircle, Printer, WifiOff, Wifi, AlertTriangle } from 'lucide-react';
 import api from '../services/api';
+
+interface PendingContagem {
+  reposicaoId: string;
+  codigoItem: number;
+  quantidade: number | null;
+  timestamp: number;
+}
+
+const PENDING_KEY = 'reposicao_pending_contagens';
+
+const getPendingQueue = (): PendingContagem[] => {
+  try {
+    const data = localStorage.getItem(PENDING_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+};
+
+const savePendingQueue = (queue: PendingContagem[]) => {
+  localStorage.setItem(PENDING_KEY, JSON.stringify(queue));
+};
+
+const addToPendingQueue = (item: PendingContagem) => {
+  const queue = getPendingQueue();
+  const idx = queue.findIndex(q => q.codigoItem === item.codigoItem);
+  if (idx >= 0) {
+    queue[idx] = item;
+  } else {
+    queue.push(item);
+  }
+  savePendingQueue(queue);
+};
 
 interface ReposicaoItem {
   codigo_item: number;
@@ -38,8 +71,50 @@ const ReposicaoPage = () => {
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('none');
   const [savingItem, setSavingItem] = useState<number | null>(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [pendingCount, setPendingCount] = useState(getPendingQueue().length);
+  const [isSyncingOffline, setIsSyncingOffline] = useState(false);
   const debounceTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const printRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isOnline) syncPendingQueue();
+  }, [isOnline]);
+
+  const syncPendingQueue = async () => {
+    const queue = getPendingQueue();
+    if (queue.length === 0) return;
+
+    setIsSyncingOffline(true);
+    const failed: PendingContagem[] = [];
+
+    for (const item of queue) {
+      try {
+        await api.put(`/reposicao/${item.reposicaoId}/item/${item.codigoItem}`, {
+          quantidade: item.quantidade
+        });
+      } catch {
+        failed.push(item);
+      }
+    }
+
+    savePendingQueue(failed);
+    setPendingCount(failed.length);
+    setIsSyncingOffline(false);
+
+    if (failed.length === 0 && queue.length > 0) fetchLatest();
+  };
 
   useEffect(() => {
     fetchLatest();
@@ -76,7 +151,14 @@ const ReposicaoPage = () => {
     try {
       await api.put(`/reposicao/${data._id}/item/${codigoItem}`, { quantidade: value });
     } catch (error) {
-      console.error('Erro ao salvar quantidade:', error);
+      console.error('Erro ao salvar quantidade (offline):', error);
+      addToPendingQueue({
+        reposicaoId: data._id,
+        codigoItem,
+        quantidade: value,
+        timestamp: Date.now()
+      });
+      setPendingCount(getPendingQueue().length);
     } finally {
       setSavingItem(null);
     }
@@ -196,12 +278,44 @@ const ReposicaoPage = () => {
 
   return (
     <div className="space-y-4">
+      {!isOnline && (
+        <div className="bg-orange-50 border border-orange-300 rounded-lg p-3 flex items-center space-x-3">
+          <WifiOff className="text-orange-600 flex-shrink-0" size={22} />
+          <div>
+            <p className="text-orange-800 font-medium text-sm">Sem conexão com a internet</p>
+            <p className="text-orange-600 text-xs">As quantidades serão salvas localmente e enviadas quando a conexão for restaurada.</p>
+          </div>
+        </div>
+      )}
+
+      {isOnline && pendingCount > 0 && (
+        <div className={`border rounded-lg p-3 flex items-center space-x-3 ${isSyncingOffline ? 'bg-blue-50 border-blue-300' : 'bg-yellow-50 border-yellow-300'}`}>
+          {isSyncingOffline ? (
+            <>
+              <RefreshCw className="text-blue-600 animate-spin flex-shrink-0" size={22} />
+              <p className="text-blue-800 font-medium text-sm">Sincronizando {pendingCount} quantidade(s) pendente(s)...</p>
+            </>
+          ) : (
+            <>
+              <AlertTriangle className="text-yellow-600 flex-shrink-0" size={22} />
+              <div className="flex items-center space-x-3">
+                <p className="text-yellow-800 font-medium text-sm">{pendingCount} quantidade(s) pendente(s)</p>
+                <button onClick={syncPendingQueue} className="text-xs bg-yellow-600 text-white px-3 py-1 rounded hover:bg-yellow-700">Sincronizar agora</button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center space-x-3">
           <PackageCheck className="text-blue-600" size={28} />
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Reposição</h1>
+            <div className="flex items-center space-x-2">
+              <h1 className="text-2xl font-bold text-gray-800">Reposição</h1>
+              {isOnline ? <Wifi size={18} className="text-green-500" /> : <WifiOff size={18} className="text-orange-500" />}
+            </div>
             {data && (
               <div className="flex items-center space-x-1 text-sm text-gray-500">
                 <Clock size={14} />
