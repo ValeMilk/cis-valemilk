@@ -221,7 +221,7 @@ CROSS APPLY (
         CASE WHEN Calc1.GiroMensal > Calc1.GiroTrimestral THEN Calc1.GiroMensal ELSE Calc1.GiroTrimestral END AS MaiorGiro
 ) Calc2
 
-WHERE upf.rn = 1 
+WHERE upf.rn = 1 AND upf.E02_DESC NOT LIKE '%paa leite%'
 ORDER BY Cod ASC;
   `;
 };
@@ -362,7 +362,7 @@ export const getHistoricalItemsQuery = (): string => {
             CASE WHEN Calc1.GiroMensal > Calc1.GiroTrimestral THEN Calc1.GiroMensal ELSE Calc1.GiroTrimestral END AS MaiorGiro
     ) Calc2
 
-    WHERE upf.rn = 1 
+    WHERE upf.rn = 1 AND upf.E02_DESC NOT LIKE '%paa leite%'
     ORDER BY Cod ASC, [Dt Ult Entrada] DESC;
   `;
 };
@@ -482,7 +482,7 @@ export const getInventarioQuery = (): string => {
     LEFT JOIN ProducoesAberto pa ON upf.M01_ID_E02 = pa.P21_ID_E02
     LEFT JOIN dbo.E02 e02vol ON e02vol.E02_ID = upf.M01_ID_E02
 
-    WHERE upf.rn = 1 
+    WHERE upf.rn = 1 AND upf.E02_DESC NOT LIKE '%paa leite%'
     ORDER BY Cod ASC;
   `;
 };
@@ -574,7 +574,7 @@ LEFT JOIN EstoqueSaldo es ON upf.M01_ID_E02 = es.E03_ID_E02
 LEFT JOIN dbo.E02 e02vol ON e02vol.E02_ID = upf.M01_ID_E02
 
 
-WHERE upf.rn = 1 
+WHERE upf.rn = 1 AND upf.E02_DESC NOT LIKE '%paa leite%'
 ORDER BY Cod ASC;
   `;
 };
@@ -647,7 +647,7 @@ export const getAvariaQuery = (): string => {
     LEFT JOIN EstoqueSaldo es ON upf.M01_ID_E02 = es.E03_ID_E02
     LEFT JOIN dbo.E02 e02vol ON e02vol.E02_ID = upf.M01_ID_E02
 
-    WHERE upf.rn = 1
+    WHERE upf.rn = 1 AND upf.E02_DESC NOT LIKE '%paa leite%'
     ORDER BY Cod ASC;
   `;
 };
@@ -917,7 +917,7 @@ LEFT JOIN GiroEstoque ge ON upf.M01_ID_E02 = ge.P21_ID_E02
 LEFT JOIN EstoqueSaldo es ON upf.M01_ID_E02 = es.E03_ID_E02
 LEFT JOIN ProducoesAberto pa ON upf.M01_ID_E02 = pa.P21_ID_E02
 
-WHERE upf.rn = 1 
+WHERE upf.rn = 1 AND upf.E02_DESC NOT LIKE '%paa leite%'
 ORDER BY Cod ASC;
   `;
 };
