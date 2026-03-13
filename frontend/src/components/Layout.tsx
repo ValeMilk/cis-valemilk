@@ -15,117 +15,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-gray-100">
       <nav className="bg-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center space-x-8">
-              <img src="/assets/valemilk-logo.png" alt="Vale Milk" className="h-10 w-auto" />
-              <Link
-                to="/"
-                className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
-              >
-                <LayoutDashboard size={20} />
-                <span>Dashboard</span>
-              </Link>
-              {user?.perfil !== PerfilEnum.RECEBIMENTO && user?.perfil !== PerfilEnum.FILIAL && (
-                <>
-                  <Link
-                    to="/items"
-                    className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
-                  >
-                    <Package size={20} />
-                    <span>Análise de Itens</span>
-                  </Link>
-                  <Link
-                    to="/historico-compras"
-                    className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
-                  >
-                    <BarChart3 size={20} />
-                    <span>Hist. Compras</span>
-                  </Link>
-                  <Link
-                    to="/fornecedores"
-                    className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
-                  >
-                    <Building2 size={20} />
-                    <span>Fornecedores</span>
-                  </Link>
-                  <Link
-                    to="/pedidos"
-                    className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
-                  >
-                    <ShoppingCart size={20} />
-                    <span>Pedidos</span>
-                  </Link>
-                </>
-              )}
-              {(user?.perfil === PerfilEnum.RECEBIMENTO || user?.perfil === PerfilEnum.ADMIN) && (
-                <Link
-                  to="/inventario"
-                  className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
-                >
-                  <ClipboardList size={20} />
-                  <span>Inventário</span>
-                </Link>
-              )}
-              {(user?.perfil === PerfilEnum.RECEBIMENTO || user?.perfil === PerfilEnum.ADMIN) && (
-                <Link
-                  to="/reposicao"
-                  className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
-                >
-                  <PackageCheck size={20} />
-                  <span>Reposição</span>
-                </Link>
-              )}
-              {(user?.perfil === PerfilEnum.FILIAL || user?.perfil === PerfilEnum.ADMIN) && (
-                <>
-                  <Link
-                    to="/inventario-filial"
-                    className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
-                  >
-                    <ClipboardList size={20} />
-                    <span>Inv. Filial</span>
-                  </Link>
-                  <Link
-                    to="/avaria"
-                    className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
-                  >
-                    <AlertTriangle size={20} />
-                    <span>Avaria</span>
-                  </Link>
-                </>
-              )}
-              <Link
-                to="/central-inventario"
-                className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
-              >
-                <Archive size={20} />
-                <span>Central Inventário</span>
-              </Link>
-              <Link
-                to="/central-avaria"
-                className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
-              >
-                <AlertTriangle size={20} />
-                <span>Central Avaria</span>
-              </Link>
-              <Link
-                to="/central-reposicao"
-                className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
-              >
-                <PackageCheck size={20} />
-                <span>Central Reposição</span>
-              </Link>
-              {user?.perfil === PerfilEnum.ADMIN && (
-                <Link
-                  to="/usuarios"
-                  className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"
-                >
-                  <Users size={20} />
-                  <span>Usuários</span>
-                </Link>
-              )}
-            </div>
-
+        <div className="max-w-full mx-auto px-4">
+          {/* Top bar: logo + user */}
+          <div className="flex items-center justify-between h-14 border-b border-gray-100">
+            <img src="/assets/valemilk-logo.png" alt="Vale Milk" className="h-10 w-auto" />
             <div className="flex items-center space-x-4">
               <div className="text-right">
                 <p className="text-sm font-medium">{user?.nome}</p>
@@ -138,6 +31,62 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <LogOut size={20} />
               </button>
             </div>
+          </div>
+          {/* Navigation links */}
+          <div className="flex items-center flex-wrap gap-1 py-1">
+            <Link to="/" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
+              <LayoutDashboard size={16} /><span>Dashboard</span>
+            </Link>
+            {user?.perfil !== PerfilEnum.RECEBIMENTO && user?.perfil !== PerfilEnum.FILIAL && (
+              <>
+                <Link to="/items" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
+                  <Package size={16} /><span>Análise de Itens</span>
+                </Link>
+                <Link to="/historico-compras" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
+                  <BarChart3 size={16} /><span>Hist. Compras</span>
+                </Link>
+                <Link to="/fornecedores" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
+                  <Building2 size={16} /><span>Fornecedores</span>
+                </Link>
+                <Link to="/pedidos" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
+                  <ShoppingCart size={16} /><span>Pedidos</span>
+                </Link>
+              </>
+            )}
+            {(user?.perfil === PerfilEnum.RECEBIMENTO || user?.perfil === PerfilEnum.ADMIN) && (
+              <Link to="/inventario" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
+                <ClipboardList size={16} /><span>Inventário</span>
+              </Link>
+            )}
+            {(user?.perfil === PerfilEnum.RECEBIMENTO || user?.perfil === PerfilEnum.ADMIN) && (
+              <Link to="/reposicao" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
+                <PackageCheck size={16} /><span>Reposição</span>
+              </Link>
+            )}
+            {(user?.perfil === PerfilEnum.FILIAL || user?.perfil === PerfilEnum.ADMIN) && (
+              <>
+                <Link to="/inventario-filial" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
+                  <ClipboardList size={16} /><span>Inv. Filial</span>
+                </Link>
+                <Link to="/avaria" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
+                  <AlertTriangle size={16} /><span>Avaria</span>
+                </Link>
+              </>
+            )}
+            <Link to="/central-inventario" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
+              <Archive size={16} /><span>Central Inventário</span>
+            </Link>
+            <Link to="/central-avaria" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
+              <AlertTriangle size={16} /><span>Central Avaria</span>
+            </Link>
+            <Link to="/central-reposicao" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
+              <PackageCheck size={16} /><span>Central Reposição</span>
+            </Link>
+            {user?.perfil === PerfilEnum.ADMIN && (
+              <Link to="/usuarios" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
+                <Users size={16} /><span>Usuários</span>
+              </Link>
+            )}
           </div>
         </div>
       </nav>
