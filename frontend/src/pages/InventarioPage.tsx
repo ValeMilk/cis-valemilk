@@ -214,8 +214,8 @@ const InventarioPage = () => {
   // Verifica se o item usa input por volume (PA, UM != KG, com tipo_volume e unidades > 0)
   const usaVolume = (item: InventarioItem): boolean => {
     return item.tipo === 'Produto Acabado' &&
-      item.unidade_medida?.toUpperCase() !== 'KG' &&
-      !!item.tipo_volume &&
+      item.unidade_medida?.trim().toUpperCase() !== 'KG' &&
+      !!item.tipo_volume?.trim() &&
       item.unidades_por_volume > 0;
   };
 

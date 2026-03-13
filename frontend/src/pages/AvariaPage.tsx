@@ -88,8 +88,8 @@ const AvariaPage = () => {
 
   const usaVolume = (item: AvariaItem) =>
     item.tipo === 'Produto Acabado' &&
-    item.unidade_medida?.toUpperCase() !== 'KG' &&
-    !!item.tipo_volume &&
+    item.unidade_medida?.trim().toUpperCase() !== 'KG' &&
+    !!item.tipo_volume?.trim() &&
     item.unidades_por_volume > 0;
 
   const getActiveFiltersLabel = () => {
