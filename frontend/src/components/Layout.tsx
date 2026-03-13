@@ -18,7 +18,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex justify-between h-16">
             <div className="flex items-center space-x-8">
-              <h1 className="text-2xl font-bold text-blue-600">CIS</h1>
+              <img src="/assets/valemilk-logo.png" alt="Vale Milk" className="h-10 w-auto" />
               <Link
                 to="/"
                 className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100"

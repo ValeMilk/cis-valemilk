@@ -53,7 +53,9 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <h1 className="text-3xl font-bold mb-2 text-center text-blue-600">CIS</h1>
+        <div className="flex justify-center mb-4">
+          <img src="/assets/valemilk-logo.png" alt="Vale Milk" className="h-20 w-auto" />
+        </div>
         <p className="text-gray-600 text-center mb-6">Central de Inteligência de Suprimentos</p>
 
         {error && (
