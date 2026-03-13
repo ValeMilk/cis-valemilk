@@ -5,8 +5,12 @@ export interface IAvariaItem {
   descricao: string;
   tipo: string;
   unidade_medida: string;
+  tipo_volume: string;
+  unidades_por_volume: number;
   deposito_5: number;
   contagem: number | null;
+  volumes_fechados: number | null;
+  unitarios_avulsos: number | null;
   contagem_data?: Date;
   contagem_usuario?: string;
   observacao?: string;
@@ -34,8 +38,12 @@ const AvariaItemSchema = new Schema({
   descricao: { type: String, required: true },
   tipo: { type: String, required: true },
   unidade_medida: { type: String, default: '' },
+  tipo_volume: { type: String, default: '' },
+  unidades_por_volume: { type: Number, default: 0 },
   deposito_5: { type: Number, default: 0 },
   contagem: { type: Number, default: null },
+  volumes_fechados: { type: Number, default: null },
+  unitarios_avulsos: { type: Number, default: null },
   contagem_data: { type: Date },
   contagem_usuario: { type: String },
   observacao: { type: String, default: '' }

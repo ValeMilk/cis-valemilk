@@ -42,9 +42,15 @@ interface InventarioFilialItem {
   descricao: string;
   tipo: string;
   unidade_medida: string;
+  tipo_volume: string;
+  unidades_por_volume: number;
   deposito_2: number;
   quantidade_real: number | null;
   avariado: number | null;
+  volumes_fechados_real: number | null;
+  unitarios_avulsos_real: number | null;
+  volumes_fechados_avariado: number | null;
+  unitarios_avulsos_avariado: number | null;
   quantidade_real_data?: string;
   quantidade_real_usuario?: string;
   avariado_data?: string;
@@ -181,6 +187,13 @@ const InventarioFilialPage = () => {
     return mapa;
   };
 
+  const usaVolume = (item: InventarioFilialItem): boolean => {
+    return item.tipo === 'Produto Acabado' &&
+      item.unidade_medida?.toUpperCase() !== 'KG' &&
+      !!item.tipo_volume &&
+      item.unidades_por_volume > 0;
+  };
+
   const filterItems = () => {
     if (!inventario) return;
     let filtered = [...inventario.itens];
@@ -226,13 +239,19 @@ const InventarioFilialPage = () => {
     setFilteredItems(filtered);
   };
 
-  const saveContagem = useCallback(async (codigoItem: string, field: 'quantidade_real' | 'avariado', value: number | null) => {
+  const saveContagem = useCallback(async (codigoItem: string, field: 'quantidade_real' | 'avariado', value: number | null, vf?: number | null, ua?: number | null) => {
     if (!inventario) return;
     setSavingItem(codigoItem);
     try {
-      await api.put(`/inventario-filial/${inventario._id}/item/${codigoItem}`, {
-        [field]: value
-      });
+      const payload: any = { [field]: value };
+      if (field === 'quantidade_real') {
+        if (vf !== undefined) payload.volumes_fechados_real = vf;
+        if (ua !== undefined) payload.unitarios_avulsos_real = ua;
+      } else {
+        if (vf !== undefined) payload.volumes_fechados_avariado = vf;
+        if (ua !== undefined) payload.unitarios_avulsos_avariado = ua;
+      }
+      await api.put(`/inventario-filial/${inventario._id}/item/${codigoItem}`, payload);
     } catch (error) {
       console.error('Erro ao salvar contagem (offline):', error);
       const existing = getPendingQueue().find(q => q.codigoItem === codigoItem);
@@ -264,6 +283,24 @@ const InventarioFilialPage = () => {
     debounceTimers.current[codigoItem + '_qr'] = setTimeout(() => saveContagem(codigoItem, 'quantidade_real', value), 800);
   };
 
+  const handleVolumeRealChange = (codigoItem: string, rawVolumes: string, rawAvulsos: string, unidadesPorVolume: number) => {
+    const volumes = rawVolumes === '' ? null : parseInt(rawVolumes);
+    const avulsos = rawAvulsos === '' ? null : parseInt(rawAvulsos);
+    const total = (volumes !== null ? volumes * unidadesPorVolume : 0) + (avulsos ?? 0);
+    const value = (volumes !== null || avulsos !== null) ? total : null;
+    setInventario(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        itens: prev.itens.map(item =>
+          item.codigo_item === codigoItem ? { ...item, quantidade_real: value, volumes_fechados_real: volumes, unitarios_avulsos_real: avulsos } : item
+        )
+      };
+    });
+    if (debounceTimers.current[codigoItem + '_qr']) clearTimeout(debounceTimers.current[codigoItem + '_qr']);
+    debounceTimers.current[codigoItem + '_qr'] = setTimeout(() => saveContagem(codigoItem, 'quantidade_real', value, volumes, avulsos), 800);
+  };
+
   const handleAvariadoChange = (codigoItem: string, rawValue: string) => {
     const value = rawValue === '' ? null : parseFloat(rawValue);
     setInventario(prev => {
@@ -277,6 +314,24 @@ const InventarioFilialPage = () => {
     });
     if (debounceTimers.current[codigoItem + '_av']) clearTimeout(debounceTimers.current[codigoItem + '_av']);
     debounceTimers.current[codigoItem + '_av'] = setTimeout(() => saveContagem(codigoItem, 'avariado', value), 800);
+  };
+
+  const handleVolumeAvariadoChange = (codigoItem: string, rawVolumes: string, rawAvulsos: string, unidadesPorVolume: number) => {
+    const volumes = rawVolumes === '' ? null : parseInt(rawVolumes);
+    const avulsos = rawAvulsos === '' ? null : parseInt(rawAvulsos);
+    const total = (volumes !== null ? volumes * unidadesPorVolume : 0) + (avulsos ?? 0);
+    const value = (volumes !== null || avulsos !== null) ? total : null;
+    setInventario(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        itens: prev.itens.map(item =>
+          item.codigo_item === codigoItem ? { ...item, avariado: value, volumes_fechados_avariado: volumes, unitarios_avulsos_avariado: avulsos } : item
+        )
+      };
+    });
+    if (debounceTimers.current[codigoItem + '_av']) clearTimeout(debounceTimers.current[codigoItem + '_av']);
+    debounceTimers.current[codigoItem + '_av'] = setTimeout(() => saveContagem(codigoItem, 'avariado', value, volumes, avulsos), 800);
   };
 
   const handleObservacaoChange = (codigoItem: string, value: string) => {
@@ -562,6 +617,27 @@ const InventarioFilialPage = () => {
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600 hidden sm:table-cell">{item.unidade_medida}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900">{formatNumber(item.deposito_2)}</td>
                         <td className="px-3 py-2 whitespace-nowrap">
+                          {usaVolume(item) ? (
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-1">
+                                <input type="number" step="1" min="0"
+                                  value={item.volumes_fechados_real !== null && item.volumes_fechados_real !== undefined ? item.volumes_fechados_real : ''}
+                                  onChange={(e) => handleVolumeRealChange(item.codigo_item, e.target.value, String(item.unitarios_avulsos_real ?? ''), item.unidades_por_volume)}
+                                  disabled={inventario.status === 'finalizado'}
+                                  className={`w-14 px-1 py-1 border rounded text-sm text-right focus:ring-2 focus:ring-blue-500 ${inventario.status === 'finalizado' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                  placeholder="Vol" title={`${item.tipo_volume}s (×${item.unidades_por_volume})`} />
+                                <span className="text-xs text-gray-500">{item.tipo_volume?.charAt(0) || 'V'}</span>
+                                <input type="number" step="1" min="0"
+                                  value={item.unitarios_avulsos_real !== null && item.unitarios_avulsos_real !== undefined ? item.unitarios_avulsos_real : ''}
+                                  onChange={(e) => handleVolumeRealChange(item.codigo_item, String(item.volumes_fechados_real ?? ''), e.target.value, item.unidades_por_volume)}
+                                  disabled={inventario.status === 'finalizado'}
+                                  className={`w-14 px-1 py-1 border rounded text-sm text-right focus:ring-2 focus:ring-blue-500 ${inventario.status === 'finalizado' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                  placeholder="Avul" title="Unidades avulsas" />
+                                <span className="text-xs text-gray-500">un</span>
+                              </div>
+                              {item.quantidade_real !== null && <span className="text-xs text-blue-600 font-medium">= {formatNumber(item.quantidade_real)} un</span>}
+                            </div>
+                          ) : (
                           <div className="flex items-center space-x-1">
                             <input type="number" step="any"
                               value={item.quantidade_real !== null && item.quantidade_real !== undefined ? item.quantidade_real : ''}
@@ -572,8 +648,30 @@ const InventarioFilialPage = () => {
                               }`}
                               placeholder="-" />
                           </div>
+                          )}
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap">
+                          {usaVolume(item) ? (
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-1">
+                                <input type="number" step="1" min="0"
+                                  value={item.volumes_fechados_avariado !== null && item.volumes_fechados_avariado !== undefined ? item.volumes_fechados_avariado : ''}
+                                  onChange={(e) => handleVolumeAvariadoChange(item.codigo_item, e.target.value, String(item.unitarios_avulsos_avariado ?? ''), item.unidades_por_volume)}
+                                  disabled={inventario.status === 'finalizado'}
+                                  className={`w-14 px-1 py-1 border rounded text-sm text-right focus:ring-2 focus:ring-orange-500 ${inventario.status === 'finalizado' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                  placeholder="Vol" title={`${item.tipo_volume}s (×${item.unidades_por_volume})`} />
+                                <span className="text-xs text-gray-500">{item.tipo_volume?.charAt(0) || 'V'}</span>
+                                <input type="number" step="1" min="0"
+                                  value={item.unitarios_avulsos_avariado !== null && item.unitarios_avulsos_avariado !== undefined ? item.unitarios_avulsos_avariado : ''}
+                                  onChange={(e) => handleVolumeAvariadoChange(item.codigo_item, String(item.volumes_fechados_avariado ?? ''), e.target.value, item.unidades_por_volume)}
+                                  disabled={inventario.status === 'finalizado'}
+                                  className={`w-14 px-1 py-1 border rounded text-sm text-right focus:ring-2 focus:ring-orange-500 ${inventario.status === 'finalizado' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                  placeholder="Avul" title="Unidades avulsas" />
+                                <span className="text-xs text-gray-500">un</span>
+                              </div>
+                              {item.avariado !== null && <span className="text-xs text-orange-600 font-medium">= {formatNumber(item.avariado)} un</span>}
+                            </div>
+                          ) : (
                           <div className="flex items-center space-x-1">
                             <input type="number" step="any"
                               value={item.avariado !== null && item.avariado !== undefined ? item.avariado : ''}
@@ -583,13 +681,14 @@ const InventarioFilialPage = () => {
                                 inventario.status === 'finalizado' ? 'bg-gray-100 cursor-not-allowed' : ''
                               }`}
                               placeholder="-" />
+                          </div>
+                          )}
                             {savingItem === item.codigo_item && (
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
                             )}
                             {temContagem && savingItem !== item.codigo_item && (
                               <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
                             )}
-                          </div>
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-semibold text-blue-700">
                           {contagemReal !== null ? formatNumber(contagemReal) : <span className="text-gray-300">-</span>}

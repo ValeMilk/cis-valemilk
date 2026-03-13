@@ -60,9 +60,17 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
         dep_fechado_interno: parseFormattedNumber(erpItem['Dep. Fechado (Interno)']),
         producoes_aberto: producoesAberto,
         dep_aberto_real: depAbertoReal,
+        tipo_volume: erpItem.TipoVolume || '',
+        unidades_por_volume: erpItem.UnidadesPorVolume || 0,
         contagem_aberto: null,
         contagem_fechado_ext: null,
         contagem_fechado_int: null,
+        volumes_fechados_aberto: null,
+        unitarios_avulsos_aberto: null,
+        volumes_fechados_ext: null,
+        unitarios_avulsos_ext: null,
+        volumes_fechados_int: null,
+        unitarios_avulsos_int: null,
         contagem_data: undefined,
         contagem_usuario: undefined
       };
@@ -73,7 +81,7 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
     
     if (inventarioExistente) {
       // Preservar contagens já feitas
-      const contagensMap = new Map<string, { aberto: number | null; fechado_ext: number | null; fechado_int: number | null; data?: Date; usuario?: string; observacao?: string }>();
+      const contagensMap = new Map<string, { aberto: number | null; fechado_ext: number | null; fechado_int: number | null; vf_aberto: number | null; ua_aberto: number | null; vf_ext: number | null; ua_ext: number | null; vf_int: number | null; ua_int: number | null; data?: Date; usuario?: string; observacao?: string }>();
       for (const item of inventarioExistente.itens) {
         const temContagem = (item as any).contagem_aberto !== null || (item as any).contagem_fechado_ext !== null || (item as any).contagem_fechado_int !== null;
         const temObs = (item as any).observacao && (item as any).observacao.trim() !== '';
@@ -82,6 +90,12 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
             aberto: (item as any).contagem_aberto,
             fechado_ext: (item as any).contagem_fechado_ext,
             fechado_int: (item as any).contagem_fechado_int,
+            vf_aberto: (item as any).volumes_fechados_aberto,
+            ua_aberto: (item as any).unitarios_avulsos_aberto,
+            vf_ext: (item as any).volumes_fechados_ext,
+            ua_ext: (item as any).unitarios_avulsos_ext,
+            vf_int: (item as any).volumes_fechados_int,
+            ua_int: (item as any).unitarios_avulsos_int,
             data: item.contagem_data,
             usuario: item.contagem_usuario,
             observacao: (item as any).observacao
@@ -98,6 +112,12 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
             contagem_aberto: contagemExistente.aberto,
             contagem_fechado_ext: contagemExistente.fechado_ext,
             contagem_fechado_int: contagemExistente.fechado_int,
+            volumes_fechados_aberto: contagemExistente.vf_aberto,
+            unitarios_avulsos_aberto: contagemExistente.ua_aberto,
+            volumes_fechados_ext: contagemExistente.vf_ext,
+            unitarios_avulsos_ext: contagemExistente.ua_ext,
+            volumes_fechados_int: contagemExistente.vf_int,
+            unitarios_avulsos_int: contagemExistente.ua_int,
             contagem_data: contagemExistente.data,
             contagem_usuario: contagemExistente.usuario
           };
@@ -133,7 +153,7 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
 router.put('/:inventarioId/item/:codigoItem', authMiddleware, async (req, res) => {
   try {
     const { inventarioId, codigoItem } = req.params;
-    const { contagem_fisica, deposito, observacao } = req.body;
+    const { contagem_fisica, deposito, observacao, volumes_fechados, unitarios_avulsos } = req.body;
     const user = (req as any).user;
     
     const inventario = await Inventario.findById(inventarioId);
@@ -157,10 +177,16 @@ router.put('/:inventarioId/item/:codigoItem', authMiddleware, async (req, res) =
     
     if (deposito === 'aberto') {
       (item as any).contagem_aberto = valor;
+      if (volumes_fechados !== undefined) (item as any).volumes_fechados_aberto = volumes_fechados !== null ? Number(volumes_fechados) : null;
+      if (unitarios_avulsos !== undefined) (item as any).unitarios_avulsos_aberto = unitarios_avulsos !== null ? Number(unitarios_avulsos) : null;
     } else if (deposito === 'fechado_ext') {
       (item as any).contagem_fechado_ext = valor;
+      if (volumes_fechados !== undefined) (item as any).volumes_fechados_ext = volumes_fechados !== null ? Number(volumes_fechados) : null;
+      if (unitarios_avulsos !== undefined) (item as any).unitarios_avulsos_ext = unitarios_avulsos !== null ? Number(unitarios_avulsos) : null;
     } else if (deposito === 'fechado_int') {
       (item as any).contagem_fechado_int = valor;
+      if (volumes_fechados !== undefined) (item as any).volumes_fechados_int = volumes_fechados !== null ? Number(volumes_fechados) : null;
+      if (unitarios_avulsos !== undefined) (item as any).unitarios_avulsos_int = unitarios_avulsos !== null ? Number(unitarios_avulsos) : null;
     } else {
       return res.status(400).json({ message: 'Depósito inválido' });
     }

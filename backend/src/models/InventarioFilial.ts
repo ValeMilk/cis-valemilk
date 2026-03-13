@@ -5,9 +5,15 @@ export interface IInventarioFilialItem {
   descricao: string;
   tipo: string;
   unidade_medida: string;
+  tipo_volume: string;
+  unidades_por_volume: number;
   deposito_2: number;
   quantidade_real: number | null;
   avariado: number | null;
+  volumes_fechados_real: number | null;
+  unitarios_avulsos_real: number | null;
+  volumes_fechados_avariado: number | null;
+  unitarios_avulsos_avariado: number | null;
   quantidade_real_data?: Date;
   quantidade_real_usuario?: string;
   avariado_data?: Date;
@@ -37,9 +43,15 @@ const InventarioFilialItemSchema = new Schema({
   descricao: { type: String, required: true },
   tipo: { type: String, required: true },
   unidade_medida: { type: String, default: '' },
+  tipo_volume: { type: String, default: '' },
+  unidades_por_volume: { type: Number, default: 0 },
   deposito_2: { type: Number, default: 0 },
   quantidade_real: { type: Number, default: null },
   avariado: { type: Number, default: null },
+  volumes_fechados_real: { type: Number, default: null },
+  unitarios_avulsos_real: { type: Number, default: null },
+  volumes_fechados_avariado: { type: Number, default: null },
+  unitarios_avulsos_avariado: { type: Number, default: null },
   quantidade_real_data: { type: Date },
   quantidade_real_usuario: { type: String },
   avariado_data: { type: Date },

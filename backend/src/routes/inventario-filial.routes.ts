@@ -39,9 +39,15 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
         descricao: erpItem.Descricao,
         tipo: erpItem.Tipo,
         unidade_medida: erpItem.UN || '',
+        tipo_volume: erpItem.TipoVolume || '',
+        unidades_por_volume: erpItem.UnidadesPorVolume || 0,
         deposito_2: deposito2,
         quantidade_real: null,
         avariado: null,
+        volumes_fechados_real: null,
+        unitarios_avulsos_real: null,
+        volumes_fechados_avariado: null,
+        unitarios_avulsos_avariado: null,
         quantidade_real_data: undefined,
         quantidade_real_usuario: undefined,
         avariado_data: undefined,
@@ -52,7 +58,7 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
     const inventarioExistente = await InventarioFilial.findOne({ status: 'em_andamento' });
 
     if (inventarioExistente) {
-      const contagensMap = new Map<string, { quantidade_real: number | null; avariado: number | null; qr_data?: Date; qr_usuario?: string; av_data?: Date; av_usuario?: string; observacao?: string }>();
+      const contagensMap = new Map<string, { quantidade_real: number | null; avariado: number | null; vf_real: number | null; ua_real: number | null; vf_avariado: number | null; ua_avariado: number | null; qr_data?: Date; qr_usuario?: string; av_data?: Date; av_usuario?: string; observacao?: string }>();
       for (const item of inventarioExistente.itens) {
         const temContagem = (item as any).quantidade_real !== null || (item as any).avariado !== null;
         const temObs = (item as any).observacao && (item as any).observacao.trim() !== '';
@@ -60,6 +66,10 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
           contagensMap.set(item.codigo_item, {
             quantidade_real: (item as any).quantidade_real,
             avariado: (item as any).avariado,
+            vf_real: (item as any).volumes_fechados_real,
+            ua_real: (item as any).unitarios_avulsos_real,
+            vf_avariado: (item as any).volumes_fechados_avariado,
+            ua_avariado: (item as any).unitarios_avulsos_avariado,
             qr_data: (item as any).quantidade_real_data,
             qr_usuario: (item as any).quantidade_real_usuario,
             av_data: (item as any).avariado_data,
@@ -76,6 +86,10 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
             ...item,
             quantidade_real: contagemExistente.quantidade_real,
             avariado: contagemExistente.avariado,
+            volumes_fechados_real: contagemExistente.vf_real,
+            unitarios_avulsos_real: contagemExistente.ua_real,
+            volumes_fechados_avariado: contagemExistente.vf_avariado,
+            unitarios_avulsos_avariado: contagemExistente.ua_avariado,
             quantidade_real_data: contagemExistente.qr_data,
             quantidade_real_usuario: contagemExistente.qr_usuario,
             avariado_data: contagemExistente.av_data,
@@ -111,7 +125,7 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
 router.put('/:inventarioId/item/:codigoItem', authMiddleware, async (req, res) => {
   try {
     const { inventarioId, codigoItem } = req.params;
-    const { quantidade_real, avariado, observacao } = req.body;
+    const { quantidade_real, avariado, observacao, volumes_fechados_real, unitarios_avulsos_real, volumes_fechados_avariado, unitarios_avulsos_avariado } = req.body;
     const user = (req as any).user;
 
     const inventario = await InventarioFilial.findById(inventarioId);
@@ -132,6 +146,11 @@ router.put('/:inventarioId/item/:codigoItem', authMiddleware, async (req, res) =
       (item as any).avariado_data = new Date();
       (item as any).avariado_usuario = user.id;
     }
+
+    if (volumes_fechados_real !== undefined) (item as any).volumes_fechados_real = volumes_fechados_real !== null ? Number(volumes_fechados_real) : null;
+    if (unitarios_avulsos_real !== undefined) (item as any).unitarios_avulsos_real = unitarios_avulsos_real !== null ? Number(unitarios_avulsos_real) : null;
+    if (volumes_fechados_avariado !== undefined) (item as any).volumes_fechados_avariado = volumes_fechados_avariado !== null ? Number(volumes_fechados_avariado) : null;
+    if (unitarios_avulsos_avariado !== undefined) (item as any).unitarios_avulsos_avariado = unitarios_avulsos_avariado !== null ? Number(unitarios_avulsos_avariado) : null;
 
     if (observacao !== undefined) {
       (item as any).observacao = observacao;

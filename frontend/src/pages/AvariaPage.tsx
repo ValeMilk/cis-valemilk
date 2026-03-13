@@ -7,6 +7,8 @@ interface PendingContagem {
   avariaId: string;
   codigoItem: string;
   contagem_fisica: number | null;
+  volumes_fechados?: number | null;
+  unitarios_avulsos?: number | null;
   timestamp: number;
 }
 
@@ -46,6 +48,10 @@ interface AvariaItem {
   contagem_data?: string;
   contagem_usuario?: string;
   observacao?: string;
+  tipo_volume?: string;
+  unidades_por_volume: number;
+  volumes_fechados: number | null;
+  unitarios_avulsos: number | null;
 }
 
 interface AvariaData {
@@ -80,6 +86,12 @@ const AvariaPage = () => {
     documentTitle: avaria ? `Avaria_${new Date(avaria.data_snapshot).toLocaleDateString('pt-BR').replace(/\//g, '-')}` : 'Avaria',
   });
 
+  const usaVolume = (item: AvariaItem) =>
+    item.tipo === 'Produto Acabado' &&
+    item.unidade_medida?.toUpperCase() !== 'KG' &&
+    !!item.tipo_volume &&
+    item.unidades_por_volume > 0;
+
   const getActiveFiltersLabel = () => {
     const filtros: string[] = ['Depósito 5 (Avaria)'];
     if (searchTerm) filtros.push(`Busca: "${searchTerm}"`);
@@ -113,7 +125,9 @@ const AvariaPage = () => {
     for (const item of queue) {
       try {
         await api.put(`/avaria/${item.avariaId}/item/${item.codigoItem}`, {
-          contagem_fisica: item.contagem_fisica
+          contagem_fisica: item.contagem_fisica,
+          volumes_fechados: item.volumes_fechados,
+          unitarios_avulsos: item.unitarios_avulsos
         });
       } catch {
         failed.push(item);
@@ -221,12 +235,14 @@ const AvariaPage = () => {
     setFilteredItems(filtered);
   };
 
-  const saveContagem = useCallback(async (codigoItem: string, value: number | null) => {
+  const saveContagem = useCallback(async (codigoItem: string, value: number | null, volumesFechados?: number | null, unitariosAvulsos?: number | null) => {
     if (!avaria) return;
     setSavingItem(codigoItem);
     try {
       await api.put(`/avaria/${avaria._id}/item/${codigoItem}`, {
-        contagem_fisica: value
+        contagem_fisica: value,
+        volumes_fechados: volumesFechados,
+        unitarios_avulsos: unitariosAvulsos
       });
       setAvaria(prev => {
         if (!prev) return prev;
@@ -234,7 +250,7 @@ const AvariaPage = () => {
           ...prev,
           itens: prev.itens.map(item =>
             item.codigo_item === codigoItem
-              ? { ...item, contagem: value, contagem_data: new Date().toISOString() }
+              ? { ...item, contagem: value, volumes_fechados: volumesFechados ?? item.volumes_fechados, unitarios_avulsos: unitariosAvulsos ?? item.unitarios_avulsos, contagem_data: new Date().toISOString() }
               : item
           )
         };
@@ -245,6 +261,8 @@ const AvariaPage = () => {
         avariaId: avaria._id,
         codigoItem,
         contagem_fisica: value,
+        volumes_fechados: volumesFechados,
+        unitarios_avulsos: unitariosAvulsos,
         timestamp: Date.now()
       });
       setPendingCount(getPendingQueue().length);
@@ -266,6 +284,23 @@ const AvariaPage = () => {
     });
     if (debounceTimers.current[codigoItem]) clearTimeout(debounceTimers.current[codigoItem]);
     debounceTimers.current[codigoItem] = setTimeout(() => saveContagem(codigoItem, value), 800);
+  };
+
+  const handleVolumeChange = (codigoItem: string, rawVol: string, rawAvul: string, unidadesPorVolume: number) => {
+    const vol = rawVol === '' ? null : parseInt(rawVol, 10);
+    const avul = rawAvul === '' ? null : parseInt(rawAvul, 10);
+    const total = (vol !== null || avul !== null) ? ((vol || 0) * unidadesPorVolume) + (avul || 0) : null;
+    setAvaria(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        itens: prev.itens.map(item =>
+          item.codigo_item === codigoItem ? { ...item, contagem: total, volumes_fechados: vol, unitarios_avulsos: avul } : item
+        )
+      };
+    });
+    if (debounceTimers.current[codigoItem]) clearTimeout(debounceTimers.current[codigoItem]);
+    debounceTimers.current[codigoItem] = setTimeout(() => saveContagem(codigoItem, total, vol, avul), 800);
   };
 
   const handleObservacaoChange = (codigoItem: string, value: string) => {
@@ -547,6 +582,33 @@ const AvariaPage = () => {
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600 hidden sm:table-cell">{item.unidade_medida}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900">{formatNumber(item.deposito_5)}</td>
                         <td className="px-3 py-2 whitespace-nowrap">
+                          {usaVolume(item) ? (
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-1">
+                                <input type="number" step="1" min="0"
+                                  value={item.volumes_fechados !== null && item.volumes_fechados !== undefined ? item.volumes_fechados : ''}
+                                  onChange={(e) => handleVolumeChange(item.codigo_item, e.target.value, String(item.unitarios_avulsos ?? ''), item.unidades_por_volume)}
+                                  disabled={avaria.status === 'finalizado'}
+                                  className={`w-14 px-1 py-1 border rounded text-sm text-right focus:ring-2 focus:ring-red-500 ${avaria.status === 'finalizado' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                  placeholder="Vol" title={`${item.tipo_volume}s (×${item.unidades_por_volume})`} />
+                                <span className="text-xs text-gray-500">{item.tipo_volume?.charAt(0) || 'V'}</span>
+                                <input type="number" step="1" min="0"
+                                  value={item.unitarios_avulsos !== null && item.unitarios_avulsos !== undefined ? item.unitarios_avulsos : ''}
+                                  onChange={(e) => handleVolumeChange(item.codigo_item, String(item.volumes_fechados ?? ''), e.target.value, item.unidades_por_volume)}
+                                  disabled={avaria.status === 'finalizado'}
+                                  className={`w-14 px-1 py-1 border rounded text-sm text-right focus:ring-2 focus:ring-red-500 ${avaria.status === 'finalizado' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                  placeholder="Avul" title="Unidades avulsas" />
+                                <span className="text-xs text-gray-500">un</span>
+                                {savingItem === item.codigo_item && (
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600" />
+                                )}
+                                {item.contagem !== null && item.contagem !== undefined && savingItem !== item.codigo_item && (
+                                  <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
+                                )}
+                              </div>
+                              {item.contagem !== null && <span className="text-xs text-red-600 font-medium">= {formatNumber(item.contagem)} un</span>}
+                            </div>
+                          ) : (
                           <div className="flex items-center space-x-1">
                             <input type="number" step="any"
                               value={item.contagem !== null && item.contagem !== undefined ? item.contagem : ''}
@@ -563,6 +625,7 @@ const AvariaPage = () => {
                               <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
                             )}
                           </div>
+                          )}
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-semibold">
                           {diferenca !== null ? (

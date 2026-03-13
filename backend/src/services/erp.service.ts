@@ -472,11 +472,15 @@ export const getInventarioQuery = (): string => {
         FORMAT(ISNULL(es.SALDO_DEP_7, 0), 'N3', 'pt-BR') AS [Dep. Fechado (Externo)],
         FORMAT(ISNULL(es.SALDO_DEP_8, 0), 'N3', 'pt-BR') AS [Dep. Fechado (Interno)],
         
-        FORMAT(ISNULL(pa.TOTAL_PREV_QTD, 0), 'N3', 'pt-BR') AS [Produções em Aberto]
+        FORMAT(ISNULL(pa.TOTAL_PREV_QTD, 0), 'N3', 'pt-BR') AS [Produções em Aberto],
+
+        ISNULL(e02vol.E02_INFADPROD_VOL, '') AS TipoVolume,
+        ISNULL(e02vol.E02_VOL_BASE, 0) AS UnidadesPorVolume
 
     FROM UltimoPorFornecedor upf
     LEFT JOIN EstoqueSaldo es ON upf.M01_ID_E02 = es.E03_ID_E02
     LEFT JOIN ProducoesAberto pa ON upf.M01_ID_E02 = pa.P21_ID_E02
+    LEFT JOIN dbo.E02 e02vol ON e02vol.E02_ID = upf.M01_ID_E02
 
     WHERE upf.rn = 1 
     ORDER BY Cod ASC;
@@ -493,6 +497,8 @@ export interface ERPInventarioItem {
   'Dep. Fechado (Externo)': string;
   'Dep. Fechado (Interno)': string;
   'Produções em Aberto': string;
+  TipoVolume: string;
+  UnidadesPorVolume: number;
 }
 
 // Query para inventário filial - Depósito 2, apenas tipo 4 (Produto Acabado)
@@ -558,10 +564,14 @@ SELECT
     upf.E02_LIVRE AS Cod,
     upf.E02_DESC AS Descricao,
     upf.E02_UM AS UN,
-    FORMAT(ISNULL(es.SALDO_DEP_2, 0), 'N3', 'pt-BR') AS [Depósito 2]
+    FORMAT(ISNULL(es.SALDO_DEP_2, 0), 'N3', 'pt-BR') AS [Depósito 2],
+
+    ISNULL(e02vol.E02_INFADPROD_VOL, '') AS TipoVolume,
+    ISNULL(e02vol.E02_VOL_BASE, 0) AS UnidadesPorVolume
 
 FROM UltimoPorFornecedor upf
 LEFT JOIN EstoqueSaldo es ON upf.M01_ID_E02 = es.E03_ID_E02
+LEFT JOIN dbo.E02 e02vol ON e02vol.E02_ID = upf.M01_ID_E02
 
 
 WHERE upf.rn = 1 
@@ -575,6 +585,8 @@ export interface ERPInventarioFilialItem {
   Descricao: string;
   UN: string;
   'Depósito 2': string;
+  TipoVolume: string;
+  UnidadesPorVolume: number;
 }
 
 // Query para avaria - Depósito 5, apenas tipo 4 (Produto Acabado)
@@ -626,10 +638,14 @@ export const getAvariaQuery = (): string => {
         upf.E02_DESC AS Descricao,
         upf.E02_UM AS UM,
 
-        FORMAT(ISNULL(es.SALDO_DEP_5, 0), 'N3', 'pt-BR') AS [Depósito 5]
+        FORMAT(ISNULL(es.SALDO_DEP_5, 0), 'N3', 'pt-BR') AS [Depósito 5],
+
+        ISNULL(e02vol.E02_INFADPROD_VOL, '') AS TipoVolume,
+        ISNULL(e02vol.E02_VOL_BASE, 0) AS UnidadesPorVolume
 
     FROM UltimoPorFornecedor upf
     LEFT JOIN EstoqueSaldo es ON upf.M01_ID_E02 = es.E03_ID_E02
+    LEFT JOIN dbo.E02 e02vol ON e02vol.E02_ID = upf.M01_ID_E02
 
     WHERE upf.rn = 1
     ORDER BY Cod ASC;
@@ -642,6 +658,8 @@ export interface ERPAvariaItem {
   Descricao: string;
   UM: string;
   'Depósito 5': string;
+  TipoVolume: string;
+  UnidadesPorVolume: number;
 }
 
 // Query para buscar todos os itens que cada fornecedor já vendeu (histórico completo)

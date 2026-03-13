@@ -37,8 +37,12 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
       descricao: erpItem.Descricao,
       tipo: erpItem.Tipo,
       unidade_medida: erpItem.UM || '',
+      tipo_volume: erpItem.TipoVolume || '',
+      unidades_por_volume: erpItem.UnidadesPorVolume || 0,
       deposito_5: parseFormattedNumber(erpItem['Depósito 5']),
       contagem: null,
+      volumes_fechados: null,
+      unitarios_avulsos: null,
       contagem_data: undefined,
       contagem_usuario: undefined
     }));
@@ -46,13 +50,15 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
     const avariaExistente = await Avaria.findOne({ status: 'em_andamento' });
 
     if (avariaExistente) {
-      const contagensMap = new Map<string, { contagem: number | null; data?: Date; usuario?: string; observacao?: string }>();
+      const contagensMap = new Map<string, { contagem: number | null; vf: number | null; ua: number | null; data?: Date; usuario?: string; observacao?: string }>();
       for (const item of avariaExistente.itens) {
         const temContagem = (item as any).contagem !== null;
         const temObs = (item as any).observacao && (item as any).observacao.trim() !== '';
         if (temContagem || temObs) {
           contagensMap.set(item.codigo_item, {
             contagem: (item as any).contagem,
+            vf: (item as any).volumes_fechados,
+            ua: (item as any).unitarios_avulsos,
             data: item.contagem_data,
             usuario: item.contagem_usuario,
             observacao: (item as any).observacao
@@ -66,6 +72,8 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
           return {
             ...item,
             contagem: contagemExistente.contagem,
+            volumes_fechados: contagemExistente.vf,
+            unitarios_avulsos: contagemExistente.ua,
             contagem_data: contagemExistente.data,
             contagem_usuario: contagemExistente.usuario,
             observacao: contagemExistente.observacao
@@ -99,7 +107,7 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
 router.put('/:avariaId/item/:codigoItem', authMiddleware, async (req, res) => {
   try {
     const { avariaId, codigoItem } = req.params;
-    const { contagem_fisica, observacao } = req.body;
+    const { contagem_fisica, observacao, volumes_fechados, unitarios_avulsos } = req.body;
     const user = (req as any).user;
 
     const avaria = await Avaria.findById(avariaId);
@@ -112,6 +120,9 @@ router.put('/:avariaId/item/:codigoItem', authMiddleware, async (req, res) => {
     (item as any).contagem = contagem_fisica !== null && contagem_fisica !== undefined
       ? Number(contagem_fisica)
       : null;
+
+    if (volumes_fechados !== undefined) (item as any).volumes_fechados = volumes_fechados !== null ? Number(volumes_fechados) : null;
+    if (unitarios_avulsos !== undefined) (item as any).unitarios_avulsos = unitarios_avulsos !== null ? Number(unitarios_avulsos) : null;
 
     if (observacao !== undefined) {
       (item as any).observacao = observacao;

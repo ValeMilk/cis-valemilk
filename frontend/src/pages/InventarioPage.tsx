@@ -49,9 +49,17 @@ interface InventarioItem {
   dep_fechado_interno: number;
   producoes_aberto: number;
   dep_aberto_real: number;
+  tipo_volume: string;
+  unidades_por_volume: number;
   contagem_aberto: number | null;
   contagem_fechado_ext: number | null;
   contagem_fechado_int: number | null;
+  volumes_fechados_aberto: number | null;
+  unitarios_avulsos_aberto: number | null;
+  volumes_fechados_ext: number | null;
+  unitarios_avulsos_ext: number | null;
+  volumes_fechados_int: number | null;
+  unitarios_avulsos_int: number | null;
   contagem_data?: string;
   contagem_usuario?: string;
   observacao?: string;
@@ -203,6 +211,38 @@ const InventarioPage = () => {
     return 'contagem_fechado_int';
   };
 
+  // Verifica se o item usa input por volume (PA, UM != KG, com tipo_volume e unidades > 0)
+  const usaVolume = (item: InventarioItem): boolean => {
+    return item.tipo === 'Produto Acabado' &&
+      item.unidade_medida?.toUpperCase() !== 'KG' &&
+      !!item.tipo_volume &&
+      item.unidades_por_volume > 0;
+  };
+
+  const getVolumesFechados = (item: InventarioItem): number | null => {
+    if (depositoFilter === 'aberto') return item.volumes_fechados_aberto;
+    if (depositoFilter === 'fechado_ext') return item.volumes_fechados_ext;
+    return item.volumes_fechados_int;
+  };
+
+  const getUnitariosAvulsos = (item: InventarioItem): number | null => {
+    if (depositoFilter === 'aberto') return item.unitarios_avulsos_aberto;
+    if (depositoFilter === 'fechado_ext') return item.unitarios_avulsos_ext;
+    return item.unitarios_avulsos_int;
+  };
+
+  const getVolumesFechadosField = (): string => {
+    if (depositoFilter === 'aberto') return 'volumes_fechados_aberto';
+    if (depositoFilter === 'fechado_ext') return 'volumes_fechados_ext';
+    return 'volumes_fechados_int';
+  };
+
+  const getUnitariosAvulsosField = (): string => {
+    if (depositoFilter === 'aberto') return 'unitarios_avulsos_aberto';
+    if (depositoFilter === 'fechado_ext') return 'unitarios_avulsos_ext';
+    return 'unitarios_avulsos_int';
+  };
+
   const getSaldo = (item: InventarioItem): number => {
     if (depositoFilter === 'aberto') return item.dep_aberto_real;
     if (depositoFilter === 'fechado_ext') return item.dep_fechado_externo;
@@ -292,25 +332,29 @@ const InventarioPage = () => {
     setFilteredItems(filtered);
   };
 
-  const saveContagem = useCallback(async (codigoItem: string, value: number | null) => {
+  const saveContagem = useCallback(async (codigoItem: string, value: number | null, volumesFechados?: number | null, unitariosAvulsos?: number | null) => {
     if (!inventario) return;
     
     setSavingItem(codigoItem);
     try {
       await api.put(`/inventario/${inventario._id}/item/${codigoItem}`, {
         contagem_fisica: value,
-        deposito: depositoFilter
+        deposito: depositoFilter,
+        volumes_fechados: volumesFechados,
+        unitarios_avulsos: unitariosAvulsos
       });
       
       // Atualizar localmente
       const field = getContagemField();
+      const vfField = getVolumesFechadosField();
+      const uaField = getUnitariosAvulsosField();
       setInventario(prev => {
         if (!prev) return prev;
         return {
           ...prev,
           itens: prev.itens.map(item =>
             item.codigo_item === codigoItem
-              ? { ...item, [field]: value, contagem_data: new Date().toISOString() }
+              ? { ...item, [field]: value, [vfField]: volumesFechados ?? item[vfField as keyof InventarioItem], [uaField]: unitariosAvulsos ?? item[uaField as keyof InventarioItem], contagem_data: new Date().toISOString() }
               : item
           )
         };
@@ -354,6 +398,37 @@ const InventarioPage = () => {
     }
     debounceTimers.current[codigoItem] = setTimeout(() => {
       saveContagem(codigoItem, value);
+    }, 800);
+  };
+
+  // Handler para alteração de volumes fechados (PA com volume)
+  const handleVolumeChange = (codigoItem: string, rawVolumes: string, rawAvulsos: string, unidadesPorVolume: number) => {
+    const volumes = rawVolumes === '' ? null : parseInt(rawVolumes);
+    const avulsos = rawAvulsos === '' ? null : parseInt(rawAvulsos);
+    const total = (volumes !== null ? volumes * unidadesPorVolume : 0) + (avulsos ?? 0);
+    const contagemValue = (volumes !== null || avulsos !== null) ? total : null;
+
+    const field = getContagemField();
+    const vfField = getVolumesFechadosField();
+    const uaField = getUnitariosAvulsosField();
+
+    setInventario(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        itens: prev.itens.map(item =>
+          item.codigo_item === codigoItem
+            ? { ...item, [field]: contagemValue, [vfField]: volumes, [uaField]: avulsos }
+            : item
+        )
+      };
+    });
+
+    if (debounceTimers.current[codigoItem]) {
+      clearTimeout(debounceTimers.current[codigoItem]);
+    }
+    debounceTimers.current[codigoItem] = setTimeout(() => {
+      saveContagem(codigoItem, contagemValue, volumes, avulsos);
     }, 800);
   };
 
@@ -764,6 +839,41 @@ const InventarioPage = () => {
                           </>
                         )}
                         <td className="px-3 py-2 whitespace-nowrap">
+                          {usaVolume(item) ? (
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  step="1"
+                                  min="0"
+                                  value={getVolumesFechados(item) !== null && getVolumesFechados(item) !== undefined ? getVolumesFechados(item)! : ''}
+                                  onChange={(e) => handleVolumeChange(item.codigo_item, e.target.value, String(getUnitariosAvulsos(item) ?? ''), item.unidades_por_volume)}
+                                  disabled={inventario.status === 'finalizado'}
+                                  className={`w-16 px-1 py-1 border rounded text-sm text-right focus:ring-2 focus:ring-blue-500 ${inventario.status === 'finalizado' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                  placeholder="Vol"
+                                  title={`${item.tipo_volume}s (×${item.unidades_por_volume})`}
+                                />
+                                <span className="text-xs text-gray-500">{item.tipo_volume?.charAt(0) || 'V'}</span>
+                                <input
+                                  type="number"
+                                  step="1"
+                                  min="0"
+                                  value={getUnitariosAvulsos(item) !== null && getUnitariosAvulsos(item) !== undefined ? getUnitariosAvulsos(item)! : ''}
+                                  onChange={(e) => handleVolumeChange(item.codigo_item, String(getVolumesFechados(item) ?? ''), e.target.value, item.unidades_por_volume)}
+                                  disabled={inventario.status === 'finalizado'}
+                                  className={`w-16 px-1 py-1 border rounded text-sm text-right focus:ring-2 focus:ring-blue-500 ${inventario.status === 'finalizado' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                  placeholder="Avul"
+                                  title="Unidades avulsas"
+                                />
+                                <span className="text-xs text-gray-500">un</span>
+                                {savingItem === item.codigo_item && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />}
+                                {contagemAtual !== null && contagemAtual !== undefined && savingItem !== item.codigo_item && <CheckCircle size={16} className="text-green-500 flex-shrink-0" />}
+                              </div>
+                              {contagemAtual !== null && contagemAtual !== undefined && (
+                                <span className="text-xs text-blue-600 font-medium">= {formatNumber(contagemAtual)} un</span>
+                              )}
+                            </div>
+                          ) : (
                           <div className="flex items-center space-x-1">
                             <input
                               type="number"
@@ -785,6 +895,7 @@ const InventarioPage = () => {
                               <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
                             )}
                           </div>
+                          )}
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-semibold">
                             {diferenca !== null ? (

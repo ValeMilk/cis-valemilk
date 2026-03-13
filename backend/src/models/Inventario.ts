@@ -11,9 +11,17 @@ export interface IInventarioItem {
   dep_fechado_interno: number;
   producoes_aberto: number;
   dep_aberto_real: number;
+  tipo_volume: string;
+  unidades_por_volume: number;
   contagem_aberto: number | null;
   contagem_fechado_ext: number | null;
   contagem_fechado_int: number | null;
+  volumes_fechados_aberto: number | null;
+  unitarios_avulsos_aberto: number | null;
+  volumes_fechados_ext: number | null;
+  unitarios_avulsos_ext: number | null;
+  volumes_fechados_int: number | null;
+  unitarios_avulsos_int: number | null;
   contagem_data?: Date;
   contagem_usuario?: string;
   observacao?: string;
@@ -47,9 +55,17 @@ const InventarioItemSchema = new Schema({
   dep_fechado_interno: { type: Number, default: 0 },
   producoes_aberto: { type: Number, default: 0 },
   dep_aberto_real: { type: Number, default: 0 },
+  tipo_volume: { type: String, default: '' },
+  unidades_por_volume: { type: Number, default: 0 },
   contagem_aberto: { type: Number, default: null },
   contagem_fechado_ext: { type: Number, default: null },
   contagem_fechado_int: { type: Number, default: null },
+  volumes_fechados_aberto: { type: Number, default: null },
+  unitarios_avulsos_aberto: { type: Number, default: null },
+  volumes_fechados_ext: { type: Number, default: null },
+  unitarios_avulsos_ext: { type: Number, default: null },
+  volumes_fechados_int: { type: Number, default: null },
+  unitarios_avulsos_int: { type: Number, default: null },
   contagem_data: { type: Date },
   contagem_usuario: { type: String },
   observacao: { type: String, default: '' }
