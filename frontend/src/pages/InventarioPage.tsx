@@ -88,7 +88,7 @@ const InventarioPage = () => {
   const [contagemFilter, setContagemFilter] = useState<'todos' | 'pendentes' | 'contados'>('todos');
   const [abcFilter, setAbcFilter] = useState<'' | 'A' | 'B' | 'C'>('');
   const [abcMap, setAbcMap] = useState<Record<string, 'A' | 'B' | 'C'>>({});
-  const [sortColumn, setSortColumn] = useState<'codigo' | 'descricao' | 'abc' | 'saldo' | ''>('');
+  const [sortColumn, setSortColumn] = useState<'codigo' | 'descricao' | 'abc' | 'saldo' | 'categoria' | ''>('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [savingItem, setSavingItem] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
