@@ -34,6 +34,7 @@ export interface IInventarioFilial extends Document {
   resolvido_por_nome?: string;
   resolvido_data?: Date;
   resolvido_observacao?: string;
+  data_finalizacao?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -71,7 +72,8 @@ const InventarioFilialSchema = new Schema({
   resolvido_por: { type: String },
   resolvido_por_nome: { type: String },
   resolvido_data: { type: Date },
-  resolvido_observacao: { type: String }
+  resolvido_observacao: { type: String },
+  data_finalizacao: { type: Date }
 }, {
   timestamps: true
 });

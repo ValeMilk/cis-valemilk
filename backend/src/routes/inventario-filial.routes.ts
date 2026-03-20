@@ -193,6 +193,7 @@ router.put('/:inventarioId/finalizar', authMiddleware, async (req, res) => {
     if (!inventario) return res.status(404).json({ message: 'Inventário não encontrado' });
 
     inventario.status = 'finalizado';
+    inventario.data_finalizacao = new Date();
     await inventario.save();
     res.json({ message: 'Inventário finalizado', inventario });
   } catch (error) {

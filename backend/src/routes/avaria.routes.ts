@@ -168,6 +168,7 @@ router.put('/:avariaId/finalizar', authMiddleware, async (req, res) => {
     if (!avaria) return res.status(404).json({ message: 'Avaria não encontrada' });
 
     avaria.status = 'finalizado';
+    avaria.data_finalizacao = new Date();
     await avaria.save();
     res.json({ message: 'Avaria finalizada', avaria });
   } catch (error) {

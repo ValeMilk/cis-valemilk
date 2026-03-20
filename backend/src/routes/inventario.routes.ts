@@ -240,6 +240,7 @@ router.put('/:inventarioId/finalizar', authMiddleware, async (req, res) => {
     }
     
     inventario.status = 'finalizado';
+    inventario.data_finalizacao = new Date();
     await inventario.save();
     
     res.json({ message: 'Inventário finalizado', inventario });

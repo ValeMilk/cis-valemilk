@@ -19,6 +19,7 @@ export interface IReposicao extends Document {
   status: 'em_andamento' | 'finalizado';
   carregado_por: string;
   carregado_por_nome: string;
+  data_finalizacao?: Date;
   itens: IReposicaoItem[];
   createdAt: Date;
   updatedAt: Date;
@@ -43,6 +44,7 @@ const ReposicaoSchema = new Schema({
   status: { type: String, enum: ['em_andamento', 'finalizado'], default: 'em_andamento' },
   carregado_por: { type: String, required: true },
   carregado_por_nome: { type: String, required: true },
+  data_finalizacao: { type: Date },
   itens: [ReposicaoItemSchema]
 }, {
   timestamps: true

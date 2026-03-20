@@ -65,6 +65,7 @@ interface InventarioFilialItem {
 interface InventarioFilial {
   _id: string;
   data_snapshot: string;
+  data_finalizacao?: string;
   status: 'em_andamento' | 'finalizado';
   criado_por_nome: string;
   itens: InventarioFilialItem[];
@@ -752,10 +753,11 @@ const InventarioFilialPage = () => {
                 </div>
                 <div className="text-right">
                   <div className="text-lg font-bold text-gray-800">Inventário Filial - Depósito 2</div>
-                  <div className="text-sm text-gray-600 mt-1">Data: {formatDate(inventario.data_snapshot)}</div>
+                  <div className="text-sm text-gray-600 mt-1">Atualização ERP: {formatDate(inventario.data_snapshot)}</div>
                   <div className="text-sm text-gray-600">Responsável: {inventario.criado_por_nome}</div>
-                  <div className="text-sm text-gray-600">Status: {inventario.status === 'em_andamento' ? 'Em Andamento' : 'Finalizado'}</div>
-                  <div className="text-sm text-gray-600">Atualização ERP: {formatDate(inventario.data_snapshot)}</div>
+                  {inventario.data_finalizacao && (
+                    <div className="text-sm text-gray-600">Finalizado em: {formatDate(inventario.data_finalizacao)}</div>
+                  )}
                 </div>
               </div>
             </div>

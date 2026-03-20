@@ -53,6 +53,7 @@ interface ReposicaoItem {
 interface Reposicao {
   _id: string;
   data_carregamento: string;
+  data_finalizacao?: string;
   status: 'em_andamento' | 'finalizado';
   carregado_por_nome: string;
   itens: ReposicaoItem[];
@@ -527,17 +528,16 @@ const ReposicaoPage = () => {
                 <div className="text-right">
                   <div className="text-lg font-bold text-gray-800">Reposição de Estoque</div>
                   <div className="text-sm text-gray-600 mt-1">
-                    Data: {formatDate(data.data_carregamento)}
+                    Atualização ERP: {formatDate(data.data_carregamento)}
                   </div>
                   <div className="text-sm text-gray-600">
                     Responsável: {data.carregado_por_nome}
                   </div>
-                  <div className="text-sm text-gray-600">
-                    Status: {data.status === 'finalizado' ? 'Finalizado' : 'Em Andamento'}
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    Atualização ERP: {formatDate(data.data_carregamento)}
-                  </div>
+                  {data.data_finalizacao && (
+                    <div className="text-sm text-gray-600">
+                      Finalizado em: {formatDate(data.data_finalizacao)}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

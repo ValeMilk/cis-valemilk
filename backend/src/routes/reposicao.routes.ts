@@ -140,6 +140,7 @@ router.put('/:id/finalizar', authMiddleware, async (req, res) => {
     if (!reposicao) return res.status(404).json({ message: 'Reposição não encontrada' });
 
     reposicao.status = 'finalizado';
+    reposicao.data_finalizacao = new Date();
     await reposicao.save();
     res.json({ success: true });
   } catch (error) {
