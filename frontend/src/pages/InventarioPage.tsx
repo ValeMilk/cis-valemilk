@@ -323,12 +323,13 @@ const InventarioPage = () => {
         if (sortColumn === 'saldo') {
           return (getSaldo(a) - getSaldo(b)) * dir;
         }
+        if (sortColumn === 'categoria') {
+          return (a.categoria || '').localeCompare(b.categoria || '') * dir;
+        }
         return 0;
       });
-    }
-
-    // Agrupar por categoria quando filtro é Produto Acabado
-    if (tipoFilter === 'Produto Acabado') {
+    } else if (tipoFilter === 'Produto Acabado') {
+      // Agrupar por categoria quando filtro é Produto Acabado e sem sort manual
       filtered.sort((a, b) => (a.categoria || '').localeCompare(b.categoria || ''));
     }
 
@@ -500,7 +501,7 @@ const InventarioPage = () => {
     return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  const handleSort = (column: 'codigo' | 'descricao' | 'abc' | 'saldo') => {
+  const handleSort = (column: 'codigo' | 'descricao' | 'abc' | 'saldo' | 'categoria') => {
     if (sortColumn === column) {
       if (sortDirection === 'asc') setSortDirection('desc');
       else { setSortColumn(''); setSortDirection('asc'); }
@@ -753,7 +754,9 @@ const InventarioPage = () => {
               <thead className="bg-gray-50">
                 <tr>
                   {tipoFilter === 'Produto Acabado' && (
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoria</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100" onClick={() => handleSort('categoria')}>
+                      <div className="flex items-center gap-1">Categoria {renderSortIcon('categoria')}</div>
+                    </th>
                   )}
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100" onClick={() => handleSort('codigo')}>
                     <div className="flex items-center gap-1">Código {renderSortIcon('codigo')}</div>
