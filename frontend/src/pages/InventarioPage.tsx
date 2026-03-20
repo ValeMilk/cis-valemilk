@@ -65,6 +65,7 @@ interface InventarioItem {
   contagem_data?: string;
   contagem_usuario?: string;
   observacao?: string;
+  categoria?: string;
 }
 
 interface Inventario {
@@ -280,7 +281,8 @@ const InventarioPage = () => {
       filtered = filtered.filter(item =>
         item.descricao.toLowerCase().includes(lower) ||
         item.codigo_item.toLowerCase().includes(lower) ||
-        item.fornecedor.toLowerCase().includes(lower)
+        item.fornecedor.toLowerCase().includes(lower) ||
+        (item.categoria || '').toLowerCase().includes(lower)
       );
     }
 
@@ -323,6 +325,11 @@ const InventarioPage = () => {
         }
         return 0;
       });
+    }
+
+    // Agrupar por categoria quando filtro é Produto Acabado
+    if (tipoFilter === 'Produto Acabado') {
+      filtered.sort((a, b) => (a.categoria || '').localeCompare(b.categoria || ''));
     }
 
     setFilteredItems(filtered);
@@ -745,6 +752,9 @@ const InventarioPage = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  {tipoFilter === 'Produto Acabado' && (
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoria</th>
+                  )}
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100" onClick={() => handleSort('codigo')}>
                     <div className="flex items-center gap-1">Código {renderSortIcon('codigo')}</div>
                   </th>
@@ -776,7 +786,7 @@ const InventarioPage = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredItems.length === 0 ? (
                   <tr>
-                    <td colSpan={depositoFilter === 'aberto' ? 11 : 9} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={(depositoFilter === 'aberto' ? 11 : 9) + (tipoFilter === 'Produto Acabado' ? 1 : 0)} className="px-4 py-8 text-center text-gray-500">
                       Nenhum item encontrado
                     </td>
                   </tr>
@@ -794,6 +804,11 @@ const InventarioPage = () => {
                     
                     return (
                       <tr key={item.codigo_item} className="hover:bg-gray-50">
+                        {tipoFilter === 'Produto Acabado' && (
+                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700 font-medium">
+                            {item.categoria || '-'}
+                          </td>
+                        )}
                         <td className="px-3 py-2 whitespace-nowrap text-sm font-mono text-gray-900">
                           {item.codigo_item}
                         </td>
@@ -988,6 +1003,9 @@ const InventarioPage = () => {
             <table className="w-full border-collapse border border-gray-300 text-xs">
               <thead>
                 <tr className="bg-blue-600 text-white">
+                  {tipoFilter === 'Produto Acabado' && (
+                    <th className="border border-gray-300 px-2 py-2 text-left">CATEGORIA</th>
+                  )}
                   <th className="border border-gray-300 px-2 py-2 text-left">CÓDIGO</th>
                   <th className="border border-gray-300 px-2 py-2 text-left">DESCRIÇÃO</th>
                   <th className="border border-gray-300 px-2 py-2 text-center">ABC</th>
@@ -1013,6 +1031,9 @@ const InventarioPage = () => {
                   const diferenca = contagem !== null && contagem !== undefined ? contagem - saldo : null;
                   return (
                     <tr key={item.codigo_item} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      {tipoFilter === 'Produto Acabado' && (
+                        <td className="border border-gray-300 px-2 py-1 font-medium">{item.categoria || '-'}</td>
+                      )}
                       <td className="border border-gray-300 px-2 py-1">{item.codigo_item}</td>
                       <td className="border border-gray-300 px-2 py-1">{item.descricao}</td>
                       <td className="border border-gray-300 px-2 py-1 text-center font-bold">

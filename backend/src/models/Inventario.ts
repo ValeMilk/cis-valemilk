@@ -25,6 +25,7 @@ export interface IInventarioItem {
   contagem_data?: Date;
   contagem_usuario?: string;
   observacao?: string;
+  categoria?: string;
 }
 
 export interface IInventario extends Document {
@@ -69,7 +70,8 @@ const InventarioItemSchema = new Schema({
   unitarios_avulsos_int: { type: Number, default: null },
   contagem_data: { type: Date },
   contagem_usuario: { type: String },
-  observacao: { type: String, default: '' }
+  observacao: { type: String, default: '' },
+  categoria: { type: String, default: '' }
 });
 
 const InventarioSchema = new Schema({

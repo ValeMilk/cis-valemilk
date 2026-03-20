@@ -395,6 +395,7 @@ export const getInventarioQuery = (): string => {
             E02.E02_UM,
             E02.E02_TIPO,
             E02.E02_Livre,
+            E01.E01_DESC AS CATEGORIA,
             M00.M00_ID_A00 AS Id_Fornecedor, 
             
             CASE 
@@ -436,6 +437,7 @@ export const getInventarioQuery = (): string => {
               OR (M00.M00_STATUS = 'I' AND E02.E02_TIPO = 7)
           )
           AND E02.E02_TIPO IN (1, 2, 4, 7, 10)
+          AND (E02.E02_TIPO <> 4 OR E02.E02_ID_E01 IN (2,3,4,5,6,7,8,9,21))
           AND E02.E02_ATIVO = 1
           AND E01.E01_DESC <> 'Outros'
           AND M01.M01_ID_E02 <> 1 
@@ -467,6 +469,7 @@ export const getInventarioQuery = (): string => {
         upf.E02_Livre AS CodLivre,
         upf.E02_DESC AS Descricao,
         upf.E02_UM AS UM,
+        upf.CATEGORIA AS Categoria,
         
         FORMAT(ISNULL(es.SALDO_DEP_1, 0), 'N3', 'pt-BR') AS [Dep. Aberto (Interno)],
         FORMAT(ISNULL(es.SALDO_DEP_7, 0), 'N3', 'pt-BR') AS [Dep. Fechado (Externo)],
@@ -493,6 +496,7 @@ export interface ERPInventarioItem {
   CodLivre: string | null;
   Descricao: string;
   UM: string;
+  Categoria: string;
   'Dep. Aberto (Interno)': string;
   'Dep. Fechado (Externo)': string;
   'Dep. Fechado (Interno)': string;

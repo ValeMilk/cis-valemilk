@@ -55,6 +55,7 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
         tipo: erpItem.Tipo,
         unidade_medida: (erpItem.UM || '').trim(),
         fornecedor: '',
+        categoria: erpItem.Categoria || '',
         dep_aberto_interno: depAbertoInterno,
         dep_fechado_externo: parseFormattedNumber(erpItem['Dep. Fechado (Externo)']),
         dep_fechado_interno: parseFormattedNumber(erpItem['Dep. Fechado (Interno)']),
