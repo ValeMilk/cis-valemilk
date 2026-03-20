@@ -319,7 +319,7 @@ const ReposicaoPage = () => {
             {data && (
               <div className="flex items-center space-x-1 text-sm text-gray-500">
                 <Clock size={14} />
-                <span>Última atualização: {formatDate(data.data_carregamento)} • Por: {data.carregado_por_nome}</span>
+                <span>Atualização ERP: {formatDate(data.data_carregamento)} • Por: {data.carregado_por_nome}</span>
               </div>
             )}
           </div>
@@ -534,6 +534,9 @@ const ReposicaoPage = () => {
                   </div>
                   <div className="text-sm text-gray-600">
                     Status: {data.status === 'finalizado' ? 'Finalizado' : 'Em Andamento'}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Atualização ERP: {formatDate(data.data_carregamento)}
                   </div>
                 </div>
               </div>

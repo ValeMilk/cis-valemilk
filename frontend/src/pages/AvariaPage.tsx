@@ -431,7 +431,7 @@ const AvariaPage = () => {
             </div>
             {avaria && (
               <p className="text-sm text-gray-500">
-                Snapshot: {formatDate(avaria.data_snapshot)} • Por: {avaria.criado_por_nome}
+                Atualização ERP: {formatDate(avaria.data_snapshot)} • Por: {avaria.criado_por_nome}
               </p>
             )}
           </div>
@@ -673,6 +673,7 @@ const AvariaPage = () => {
                   <div className="text-sm text-gray-600 mt-1">Data: {formatDate(avaria.data_snapshot)}</div>
                   <div className="text-sm text-gray-600">Responsável: {avaria.criado_por_nome}</div>
                   <div className="text-sm text-gray-600">Status: {avaria.status === 'em_andamento' ? 'Em Andamento' : 'Finalizado'}</div>
+                  <div className="text-sm text-gray-600">Atualização ERP: {formatDate(avaria.data_snapshot)}</div>
                 </div>
               </div>
             </div>

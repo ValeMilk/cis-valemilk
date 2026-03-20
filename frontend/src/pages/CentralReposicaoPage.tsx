@@ -43,6 +43,7 @@ const CentralReposicaoPage = () => {
   const [detalhe, setDetalhe] = useState<ReposicaoDetalhe | null>(null);
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
+  const [responsavelFilter, setResponsavelFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState('');
   const [reposicaoFilter, setReposicaoFilter] = useState<'todos' | 'precisa_repor' | 'ok' | 'com_quantidade'>('todos');
@@ -197,9 +198,22 @@ const CentralReposicaoPage = () => {
               <Calendar size={18} />
               <span>Filtrar</span>
             </button>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Responsável</label>
+              <select
+                value={responsavelFilter}
+                onChange={(e) => setResponsavelFilter(e.target.value)}
+                className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Todos</option>
+                {[...new Set(reposicoes.map(r => r.carregado_por_nome))].sort().map(nome => (
+                  <option key={nome} value={nome}>{nome}</option>
+                ))}
+              </select>
+            </div>
             {(dataInicio || dataFim) && (
               <button
-                onClick={() => { setDataInicio(''); setDataFim(''); fetchFinalizados(); }}
+                onClick={() => { setDataInicio(''); setDataFim(''); setResponsavelFilter(''); fetchFinalizados(); }}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800 underline text-sm"
               >
                 Limpar filtro
@@ -233,7 +247,7 @@ const CentralReposicaoPage = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {reposicoes.map((rep) => (
+                {reposicoes.filter(rep => !responsavelFilter || rep.carregado_por_nome === responsavelFilter).map((rep) => (
                   <tr key={rep._id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm text-gray-900">{formatDate(rep.data_carregamento)}</td>
                     <td className="px-4 py-3 text-sm text-gray-700">{rep.carregado_por_nome}</td>

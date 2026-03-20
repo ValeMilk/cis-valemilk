@@ -48,6 +48,7 @@ const CentralAvariaPage = () => {
   const [detalhe, setDetalhe] = useState<AvariaDetalhe | null>(null);
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
+  const [responsavelFilter, setResponsavelFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'todos' | 'contados' | 'com_divergencia' | 'sem_divergencia'>('todos');
   const [tipoFilter, setTipoFilter] = useState<string>('');
@@ -275,9 +276,22 @@ const CentralAvariaPage = () => {
               <Calendar size={18} />
               <span>Filtrar</span>
             </button>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Responsável</label>
+              <select
+                value={responsavelFilter}
+                onChange={(e) => setResponsavelFilter(e.target.value)}
+                className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500"
+              >
+                <option value="">Todos</option>
+                {[...new Set(avarias.map(a => a.criado_por_nome))].sort().map(nome => (
+                  <option key={nome} value={nome}>{nome}</option>
+                ))}
+              </select>
+            </div>
             {(dataInicio || dataFim) && (
               <button
-                onClick={() => { setDataInicio(''); setDataFim(''); fetchFinalizados(); }}
+                onClick={() => { setDataInicio(''); setDataFim(''); setResponsavelFilter(''); fetchFinalizados(); }}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800 underline text-sm"
               >
                 Limpar filtro
@@ -312,7 +326,7 @@ const CentralAvariaPage = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {avarias.map((av) => {
+                {avarias.filter(av => !responsavelFilter || av.criado_por_nome === responsavelFilter).map((av) => {
                   const cobertura = av.total_itens > 0 ? Math.round((av.itens_contados / av.total_itens) * 100) : 0;
                   return (
                     <tr key={av._id} className="hover:bg-gray-50">

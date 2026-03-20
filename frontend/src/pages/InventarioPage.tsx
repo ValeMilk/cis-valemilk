@@ -583,7 +583,7 @@ const InventarioPage = () => {
             </div>
             {inventario && (
               <p className="text-sm text-gray-500">
-                Snapshot: {formatDate(inventario.data_snapshot)} • Por: {inventario.criado_por_nome}
+                Atualização ERP: {formatDate(inventario.data_snapshot)} • Por: {inventario.criado_por_nome}
               </p>
             )}
           </div>
@@ -950,6 +950,9 @@ const InventarioPage = () => {
                   </div>
                   <div className="text-sm text-gray-600">
                     Status: {inventario.status === 'em_andamento' ? 'Em Andamento' : 'Finalizado'}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Atualização ERP: {formatDate(inventario.data_snapshot)}
                   </div>
                 </div>
               </div>
