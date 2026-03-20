@@ -39,6 +39,7 @@ interface InventarioItem {
 interface InventarioDetalhe {
   _id: string;
   data_snapshot: string;
+  data_finalizacao?: string;
   status: string;
   criado_por_nome: string;
   itens: InventarioItem[];
@@ -673,8 +674,11 @@ const CentralInventarioPage = () => {
                 </div>
                 <div className="text-right">
                   <div className="text-lg font-bold text-gray-800">Inventário Filial - Depósito 2</div>
-                  <div className="text-sm text-gray-600 mt-1">Data: {formatDate(detalhe.data_snapshot)}</div>
+                  <div className="text-sm text-gray-600 mt-1">Atualização ERP: {formatDate(detalhe.data_snapshot)}</div>
                   <div className="text-sm text-gray-600">Responsável: {detalhe.criado_por_nome}</div>
+                  {detalhe.data_finalizacao && (
+                    <div className="text-sm text-gray-600">Finalizado em: {formatDate(detalhe.data_finalizacao)}</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1054,11 +1058,16 @@ const CentralInventarioPage = () => {
               <div className="text-right">
                 <div className="text-lg font-bold text-gray-800">Inventário Físico</div>
                 <div className="text-sm text-gray-600 mt-1">
-                  Data: {formatDate(detalhe.data_snapshot)}
+                  Atualização ERP: {formatDate(detalhe.data_snapshot)}
                 </div>
                 <div className="text-sm text-gray-600">
                   Responsável: {detalhe.criado_por_nome}
                 </div>
+                {detalhe.data_finalizacao && (
+                  <div className="text-sm text-gray-600">
+                    Finalizado em: {formatDate(detalhe.data_finalizacao)}
+                  </div>
+                )}
                 {(statusFilter !== 'todos' || sortDiferenca !== 'none') && (
                   <div className="text-sm text-blue-700 font-semibold mt-1">
                     Filtro: {getStatusFilterLabel()}

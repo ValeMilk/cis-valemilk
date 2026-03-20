@@ -31,6 +31,7 @@ interface AvariaItemDetail {
 interface AvariaDetalhe {
   _id: string;
   data_snapshot: string;
+  data_finalizacao?: string;
   status: string;
   criado_por_nome: string;
   itens: AvariaItemDetail[];
@@ -563,8 +564,11 @@ const CentralAvariaPage = () => {
               </div>
               <div className="text-right">
                 <div className="text-lg font-bold text-gray-800">Avaria - Depósito 5</div>
-                <div className="text-sm text-gray-600 mt-1">Data: {formatDate(detalhe.data_snapshot)}</div>
+                <div className="text-sm text-gray-600 mt-1">Atualização ERP: {formatDate(detalhe.data_snapshot)}</div>
                 <div className="text-sm text-gray-600">Responsável: {detalhe.criado_por_nome}</div>
+                {detalhe.data_finalizacao && (
+                  <div className="text-sm text-gray-600">Finalizado em: {formatDate(detalhe.data_finalizacao)}</div>
+                )}
                 {(statusFilter !== 'todos' || sortDiferenca !== 'none') && (
                   <div className="text-sm text-red-700 font-semibold mt-1">
                     Filtro: {getStatusFilterLabel()}

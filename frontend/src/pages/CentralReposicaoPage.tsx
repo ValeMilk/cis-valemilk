@@ -29,6 +29,7 @@ interface ReposicaoItem {
 interface ReposicaoDetalhe {
   _id: string;
   data_carregamento: string;
+  data_finalizacao?: string;
   status: string;
   carregado_por_nome: string;
   itens: ReposicaoItem[];
@@ -452,14 +453,16 @@ const CentralReposicaoPage = () => {
               <div className="text-right">
                 <div className="text-lg font-bold text-gray-800">Reposição de Estoque</div>
                 <div className="text-sm text-gray-600 mt-1">
-                  Data: {formatDate(detalhe.data_carregamento)}
+                  Atualização ERP: {formatDate(detalhe.data_carregamento)}
                 </div>
                 <div className="text-sm text-gray-600">
                   Responsável: {detalhe.carregado_por_nome}
                 </div>
-                <div className="text-sm text-gray-600">
-                  Status: Finalizado
-                </div>
+                {detalhe.data_finalizacao && (
+                  <div className="text-sm text-gray-600">
+                    Finalizado em: {formatDate(detalhe.data_finalizacao)}
+                  </div>
+                )}
                 {(tipoFilter || reposicaoFilter !== 'todos') && (
                   <div className="text-sm text-blue-700 font-semibold mt-1">
                     {tipoFilter && `Tipo: ${tipoFilter}`}
