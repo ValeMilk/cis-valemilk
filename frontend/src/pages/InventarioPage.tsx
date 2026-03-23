@@ -14,6 +14,7 @@ interface PendingContagem {
 }
 
 const PENDING_KEY = 'inventario_pending_contagens';
+const INVENTARIO_CACHE_KEY = 'inventario_cache';
 
 const getPendingQueue = (): PendingContagem[] => {
   try {
@@ -26,6 +27,23 @@ const getPendingQueue = (): PendingContagem[] => {
 
 const savePendingQueue = (queue: PendingContagem[]) => {
   localStorage.setItem(PENDING_KEY, JSON.stringify(queue));
+};
+
+const getCachedInventario = (): Inventario | null => {
+  try {
+    const data = localStorage.getItem(INVENTARIO_CACHE_KEY);
+    return data ? JSON.parse(data) : null;
+  } catch {
+    return null;
+  }
+};
+
+const setCachedInventario = (inv: Inventario | null) => {
+  if (inv) {
+    localStorage.setItem(INVENTARIO_CACHE_KEY, JSON.stringify(inv));
+  } else {
+    localStorage.removeItem(INVENTARIO_CACHE_KEY);
+  }
 };
 
 const addToPendingQueue = (item: PendingContagem) => {
@@ -220,8 +238,14 @@ const InventarioPage = () => {
       setLoading(true);
       const response = await api.get('/inventario/active');
       setInventario(response.data);
+      setCachedInventario(response.data);
     } catch (error) {
       console.error('Erro ao buscar inventário:', error);
+      // Offline: carregar do cache local
+      const cached = getCachedInventario();
+      if (cached && !inventario) {
+        setInventario(cached);
+      }
     } finally {
       setLoading(false);
     }
@@ -232,6 +256,7 @@ const InventarioPage = () => {
       setSyncing(true);
       const response = await api.post('/inventario/sync-erp');
       setInventario(response.data);
+      setCachedInventario(response.data);
     } catch (error) {
       console.error('Erro ao sincronizar ERP:', error);
       alert('Erro ao carregar dados do ERP');
@@ -389,7 +414,7 @@ const InventarioPage = () => {
       const uaField = getUnitariosAvulsosField();
       setInventario(prev => {
         if (!prev) return prev;
-        return {
+        const updated = {
           ...prev,
           itens: prev.itens.map(item =>
             item.codigo_item === codigoItem
@@ -397,6 +422,8 @@ const InventarioPage = () => {
               : item
           )
         };
+        setCachedInventario(updated);
+        return updated;
       });
     } catch (error) {
       console.error('Erro ao salvar contagem (offline), salvando localmente:', error);
@@ -411,6 +438,23 @@ const InventarioPage = () => {
         timestamp: Date.now()
       });
       setPendingCount(getPendingQueue().length);
+      // Atualizar estado local mesmo offline
+      const field = getContagemField();
+      const vfField = getVolumesFechadosField();
+      const uaField = getUnitariosAvulsosField();
+      setInventario(prev => {
+        if (!prev) return prev;
+        const updated = {
+          ...prev,
+          itens: prev.itens.map(item =>
+            item.codigo_item === codigoItem
+              ? { ...item, [field]: value, [vfField]: volumesFechados ?? item[vfField as keyof InventarioItem], [uaField]: unitariosAvulsos ?? item[uaField as keyof InventarioItem], contagem_data: new Date().toISOString() }
+              : item
+          )
+        };
+        setCachedInventario(updated);
+        return updated;
+      });
     } finally {
       setSavingItem(null);
     }
@@ -526,6 +570,7 @@ const InventarioPage = () => {
     try {
       await api.put(`/inventario/${inventario._id}/finalizar`);
       setInventario(prev => prev ? { ...prev, status: 'finalizado' } : prev);
+      setCachedInventario(null);
       alert('Inventário finalizado com sucesso!');
     } catch (error) {
       console.error('Erro ao finalizar:', error);
@@ -540,6 +585,7 @@ const InventarioPage = () => {
     try {
       await api.delete(`/inventario/${inventario._id}`);
       setInventario(null);
+      setCachedInventario(null);
     } catch (error) {
       console.error('Erro ao descartar:', error);
       alert('Erro ao descartar inventário');
@@ -605,14 +651,19 @@ const InventarioPage = () => {
       )}
 
       {/* Banner Sincronizando / Pendentes */}
-      {isOnline && pendingCount > 0 && (
+      {pendingCount > 0 && (
         <div className={`border rounded-lg p-3 flex items-center space-x-3 ${
-          isSyncingOffline ? 'bg-blue-50 border-blue-300' : 'bg-yellow-50 border-yellow-300'
+          isSyncingOffline ? 'bg-blue-50 border-blue-300' : !isOnline ? 'bg-orange-50 border-orange-300' : 'bg-yellow-50 border-yellow-300'
         }`}>
           {isSyncingOffline ? (
             <>
               <RefreshCw className="text-blue-600 animate-spin flex-shrink-0" size={22} />
               <p className="text-blue-800 font-medium text-sm">Sincronizando {pendingCount} contagem(ns) pendente(s)...</p>
+            </>
+          ) : !isOnline ? (
+            <>
+              <WifiOff className="text-orange-600 flex-shrink-0" size={22} />
+              <p className="text-orange-800 font-medium text-sm">{pendingCount} contagem(ns) salva(s) localmente. Serão sincronizadas quando a conexão voltar.</p>
             </>
           ) : (
             <>
