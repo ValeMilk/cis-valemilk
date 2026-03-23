@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { Pedido, StatusPedido } from '../types';
-import { Plus, Eye, Search } from 'lucide-react';
+import { Plus, Eye, Search, Calendar, X } from 'lucide-react';
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   [StatusPedido.RASCUNHO]: { label: 'Rascunho', color: 'bg-gray-100 text-gray-700' },
@@ -21,6 +21,10 @@ export default function PedidosPage() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchIdCompra, setSearchIdCompra] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [dataInicio, setDataInicio] = useState('');
+  const [dataFim, setDataFim] = useState('');
+  const [fornecedorFilter, setFornecedorFilter] = useState('');
 
   useEffect(() => {
     fetchPedidos();
@@ -37,12 +41,32 @@ export default function PedidosPage() {
     }
   };
 
-  const filteredPedidos = pedidos.filter(pedido =>
-    searchIdCompra === '' || 
-    pedido.idCompra?.toLowerCase().includes(searchIdCompra.toLowerCase()) ||
-    pedido.numero.toLowerCase().includes(searchIdCompra.toLowerCase()) ||
-    pedido.fornecedor.toLowerCase().includes(searchIdCompra.toLowerCase())
-  );
+  const fornecedores = [...new Set(pedidos.map(p => p.fornecedor))].sort();
+
+  const filteredPedidos = pedidos.filter(pedido => {
+    if (searchIdCompra) {
+      const lower = searchIdCompra.toLowerCase();
+      if (!pedido.idCompra?.toLowerCase().includes(lower) &&
+          !pedido.numero.toLowerCase().includes(lower) &&
+          !pedido.fornecedor.toLowerCase().includes(lower)) return false;
+    }
+    if (statusFilter && pedido.status_atual !== statusFilter) return false;
+    if (fornecedorFilter && pedido.fornecedor !== fornecedorFilter) return false;
+    if (dataInicio) {
+      const d = new Date(pedido.data_criacao);
+      if (d < new Date(dataInicio)) return false;
+    }
+    if (dataFim) {
+      const d = new Date(pedido.data_criacao);
+      const fim = new Date(dataFim);
+      fim.setHours(23, 59, 59, 999);
+      if (d > fim) return false;
+    }
+    return true;
+  });
+
+  const hasActiveFilters = statusFilter || dataInicio || dataFim || fornecedorFilter;
+  const clearFilters = () => { setStatusFilter(''); setDataInicio(''); setDataFim(''); setFornecedorFilter(''); };
 
   if (loading) {
     return <div>Carregando...</div>;
@@ -61,8 +85,8 @@ export default function PedidosPage() {
         </button>
       </div>
 
-      {/* Filtro de Busca */}
-      <div className="mb-4">
+      {/* Filtros */}
+      <div className="bg-white rounded-lg shadow p-4 mb-4 space-y-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           <input
@@ -72,6 +96,53 @@ export default function PedidosPage() {
             onChange={(e) => setSearchIdCompra(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">Todos os Status</option>
+            {Object.entries(statusConfig).map(([key, { label }]) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
+          </select>
+          <select
+            value={fornecedorFilter}
+            onChange={(e) => setFornecedorFilter(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent max-w-xs"
+          >
+            <option value="">Todos os Fornecedores</option>
+            {fornecedores.map(f => (
+              <option key={f} value={f}>{f}</option>
+            ))}
+          </select>
+          <div className="flex items-center gap-2">
+            <Calendar size={16} className="text-gray-400" />
+            <input
+              type="date"
+              value={dataInicio}
+              onChange={(e) => setDataInicio(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <span className="text-gray-400 text-sm">até</span>
+            <input
+              type="date"
+              value={dataFim}
+              onChange={(e) => setDataFim(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="flex items-center gap-1 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
+            >
+              <X size={14} />
+              Limpar filtros
+            </button>
+          )}
         </div>
       </div>
 
