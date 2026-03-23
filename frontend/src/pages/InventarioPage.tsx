@@ -172,6 +172,41 @@ const InventarioPage = () => {
     fetchInventario();
   }, []);
 
+  // Polling a cada 30s para manter dados atualizados entre múltiplos usuários
+  useEffect(() => {
+    if (!inventario || inventario.status !== 'em_andamento') return;
+    const interval = setInterval(async () => {
+      try {
+        const response = await api.get('/inventario/active');
+        if (response.data) {
+          // Merge inteligente: preservar itens com edições pendentes no debounce
+          const pendingKeys = new Set(Object.keys(debounceTimers.current));
+          const pendingObsKeys = new Set(Object.keys(debounceObsTimers.current));
+          if (pendingKeys.size === 0 && pendingObsKeys.size === 0) {
+            setInventario(response.data);
+          } else {
+            setInventario(prev => {
+              if (!prev) return response.data;
+              const localMap = new Map(prev.itens.map(i => [i.codigo_item, i]));
+              return {
+                ...response.data,
+                itens: response.data.itens.map((serverItem: InventarioItem) => {
+                  if (pendingKeys.has(serverItem.codigo_item) || pendingObsKeys.has(serverItem.codigo_item)) {
+                    return localMap.get(serverItem.codigo_item) || serverItem;
+                  }
+                  return serverItem;
+                })
+              };
+            });
+          }
+        }
+      } catch {
+        // silencioso - não interromper o usuário
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [inventario?._id, inventario?.status]);
+
   useEffect(() => {
     if (!inventario) {
       setFilteredItems([]);
@@ -456,7 +491,21 @@ const InventarioPage = () => {
       try {
         await api.put(`/inventario/${inventario._id}/item/${codigoItem}/observacao`, { observacao: value });
       } catch (error) {
-        console.error('Erro ao salvar observação:', error);
+        console.error('Erro ao salvar observação (offline):', error);
+        // Salvar observação na fila offline junto com a contagem existente
+        const item = inventario.itens.find(i => i.codigo_item === codigoItem);
+        if (item) {
+          addToPendingQueue({
+            inventarioId: inventario._id,
+            codigoItem,
+            contagem_fisica: getContagem(item),
+            deposito: depositoFilter,
+            volumes_fechados: getVolumesFechados(item),
+            unitarios_avulsos: getUnitariosAvulsos(item),
+            timestamp: Date.now()
+          });
+          setPendingCount(getPendingQueue().length);
+        }
       }
     }, 800);
   };

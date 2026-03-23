@@ -81,26 +81,30 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
     const inventarioExistente = await Inventario.findOne({ status: 'em_andamento' });
     
     if (inventarioExistente) {
-      // Preservar contagens já feitas
+      // Buscar contagens ATUAIS do banco (snapshot mais recente para evitar race condition)
+      const inventarioAtual = await Inventario.findById(inventarioExistente._id).lean();
       const contagensMap = new Map<string, { aberto: number | null; fechado_ext: number | null; fechado_int: number | null; vf_aberto: number | null; ua_aberto: number | null; vf_ext: number | null; ua_ext: number | null; vf_int: number | null; ua_int: number | null; data?: Date; usuario?: string; observacao?: string }>();
-      for (const item of inventarioExistente.itens) {
-        const temContagem = (item as any).contagem_aberto !== null || (item as any).contagem_fechado_ext !== null || (item as any).contagem_fechado_int !== null;
-        const temObs = (item as any).observacao && (item as any).observacao.trim() !== '';
-        if (temContagem || temObs) {
-          contagensMap.set(item.codigo_item, {
-            aberto: (item as any).contagem_aberto,
-            fechado_ext: (item as any).contagem_fechado_ext,
-            fechado_int: (item as any).contagem_fechado_int,
-            vf_aberto: (item as any).volumes_fechados_aberto,
-            ua_aberto: (item as any).unitarios_avulsos_aberto,
-            vf_ext: (item as any).volumes_fechados_ext,
-            ua_ext: (item as any).unitarios_avulsos_ext,
-            vf_int: (item as any).volumes_fechados_int,
-            ua_int: (item as any).unitarios_avulsos_int,
-            data: item.contagem_data,
-            usuario: item.contagem_usuario,
-            observacao: (item as any).observacao
-          });
+      
+      if (inventarioAtual) {
+        for (const item of (inventarioAtual as any).itens) {
+          const temContagem = item.contagem_aberto !== null || item.contagem_fechado_ext !== null || item.contagem_fechado_int !== null;
+          const temObs = item.observacao && item.observacao.trim() !== '';
+          if (temContagem || temObs) {
+            contagensMap.set(item.codigo_item, {
+              aberto: item.contagem_aberto,
+              fechado_ext: item.contagem_fechado_ext,
+              fechado_int: item.contagem_fechado_int,
+              vf_aberto: item.volumes_fechados_aberto,
+              ua_aberto: item.unitarios_avulsos_aberto,
+              vf_ext: item.volumes_fechados_ext,
+              ua_ext: item.unitarios_avulsos_ext,
+              vf_int: item.volumes_fechados_int,
+              ua_int: item.unitarios_avulsos_int,
+              data: item.contagem_data,
+              usuario: item.contagem_usuario,
+              observacao: item.observacao
+            });
+          }
         }
       }
       
@@ -120,17 +124,21 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
             volumes_fechados_int: contagemExistente.vf_int,
             unitarios_avulsos_int: contagemExistente.ua_int,
             contagem_data: contagemExistente.data,
-            contagem_usuario: contagemExistente.usuario
+            contagem_usuario: contagemExistente.usuario,
+            observacao: contagemExistente.observacao || item.observacao
           };
         }
         return item;
       });
       
-      inventarioExistente.itens = itensAtualizados as any;
-      inventarioExistente.data_snapshot = new Date();
-      await inventarioExistente.save();
+      // Update atômico - substitui itens e data_snapshot de uma vez
+      const resultado = await Inventario.findByIdAndUpdate(
+        inventarioExistente._id,
+        { $set: { itens: itensAtualizados, data_snapshot: new Date() } },
+        { new: true }
+      );
       
-      res.json(inventarioExistente);
+      res.json(resultado);
     } else {
       // Criar novo inventário
       const novoInventario = new Inventario({
@@ -150,79 +158,84 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
   }
 });
 
-// PUT - Salvar contagem física de um item
+// PUT - Salvar contagem física de um item (operação atômica)
 router.put('/:inventarioId/item/:codigoItem', authMiddleware, async (req, res) => {
   try {
     const { inventarioId, codigoItem } = req.params;
     const { contagem_fisica, deposito, observacao, volumes_fechados, unitarios_avulsos } = req.body;
     const user = (req as any).user;
     
-    const inventario = await Inventario.findById(inventarioId);
+    // Verificar se inventário existe e está em andamento (leitura leve, sem carregar itens)
+    const inventario = await Inventario.findById(inventarioId).select('status');
     if (!inventario) {
       return res.status(404).json({ message: 'Inventário não encontrado' });
     }
-    
     if (inventario.status !== 'em_andamento') {
       return res.status(400).json({ message: 'Inventário já finalizado' });
-    }
-    
-    // Encontrar o item e atualizar contagem do depósito específico
-    const item = inventario.itens.find(i => i.codigo_item === codigoItem);
-    if (!item) {
-      return res.status(404).json({ message: 'Item não encontrado no inventário' });
     }
     
     const valor = contagem_fisica !== null && contagem_fisica !== undefined 
       ? Number(contagem_fisica) 
       : null;
     
+    // Montar $set atômico apenas para os campos necessários
+    const setFields: Record<string, any> = {
+      'itens.$.contagem_data': new Date(),
+      'itens.$.contagem_usuario': user.id
+    };
+    
     if (deposito === 'aberto') {
-      (item as any).contagem_aberto = valor;
-      if (volumes_fechados !== undefined) (item as any).volumes_fechados_aberto = volumes_fechados !== null ? Number(volumes_fechados) : null;
-      if (unitarios_avulsos !== undefined) (item as any).unitarios_avulsos_aberto = unitarios_avulsos !== null ? Number(unitarios_avulsos) : null;
+      setFields['itens.$.contagem_aberto'] = valor;
+      if (volumes_fechados !== undefined) setFields['itens.$.volumes_fechados_aberto'] = volumes_fechados !== null ? Number(volumes_fechados) : null;
+      if (unitarios_avulsos !== undefined) setFields['itens.$.unitarios_avulsos_aberto'] = unitarios_avulsos !== null ? Number(unitarios_avulsos) : null;
     } else if (deposito === 'fechado_ext') {
-      (item as any).contagem_fechado_ext = valor;
-      if (volumes_fechados !== undefined) (item as any).volumes_fechados_ext = volumes_fechados !== null ? Number(volumes_fechados) : null;
-      if (unitarios_avulsos !== undefined) (item as any).unitarios_avulsos_ext = unitarios_avulsos !== null ? Number(unitarios_avulsos) : null;
+      setFields['itens.$.contagem_fechado_ext'] = valor;
+      if (volumes_fechados !== undefined) setFields['itens.$.volumes_fechados_ext'] = volumes_fechados !== null ? Number(volumes_fechados) : null;
+      if (unitarios_avulsos !== undefined) setFields['itens.$.unitarios_avulsos_ext'] = unitarios_avulsos !== null ? Number(unitarios_avulsos) : null;
     } else if (deposito === 'fechado_int') {
-      (item as any).contagem_fechado_int = valor;
-      if (volumes_fechados !== undefined) (item as any).volumes_fechados_int = volumes_fechados !== null ? Number(volumes_fechados) : null;
-      if (unitarios_avulsos !== undefined) (item as any).unitarios_avulsos_int = unitarios_avulsos !== null ? Number(unitarios_avulsos) : null;
+      setFields['itens.$.contagem_fechado_int'] = valor;
+      if (volumes_fechados !== undefined) setFields['itens.$.volumes_fechados_int'] = volumes_fechados !== null ? Number(volumes_fechados) : null;
+      if (unitarios_avulsos !== undefined) setFields['itens.$.unitarios_avulsos_int'] = unitarios_avulsos !== null ? Number(unitarios_avulsos) : null;
     } else {
       return res.status(400).json({ message: 'Depósito inválido' });
     }
     
     if (observacao !== undefined) {
-      (item as any).observacao = observacao;
+      setFields['itens.$.observacao'] = observacao;
     }
     
-    item.contagem_data = new Date();
-    item.contagem_usuario = user.id;
+    // Update atômico — só toca no subdocumento do item específico
+    const result = await Inventario.updateOne(
+      { _id: inventarioId, 'itens.codigo_item': codigoItem },
+      { $set: setFields }
+    );
     
-    await inventario.save();
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: 'Item não encontrado no inventário' });
+    }
     
-    res.json({ message: 'Contagem salva', item });
+    res.json({ message: 'Contagem salva' });
   } catch (error) {
     console.error('❌ Erro ao salvar contagem:', error);
     res.status(500).json({ message: 'Erro ao salvar contagem' });
   }
 });
 
-// PUT - Salvar observação de um item
+// PUT - Salvar observação de um item (operação atômica)
 router.put('/:inventarioId/item/:codigoItem/observacao', authMiddleware, async (req, res) => {
   try {
     const { inventarioId, codigoItem } = req.params;
     const { observacao } = req.body;
 
-    const inventario = await Inventario.findById(inventarioId);
-    if (!inventario) return res.status(404).json({ message: 'Inventário não encontrado' });
-    if (inventario.status !== 'em_andamento') return res.status(400).json({ message: 'Inventário já finalizado' });
+    const result = await Inventario.updateOne(
+      { _id: inventarioId, status: 'em_andamento', 'itens.codigo_item': codigoItem },
+      { $set: { 'itens.$.observacao': observacao || '' } }
+    );
 
-    const item = inventario.itens.find(i => i.codigo_item === codigoItem);
-    if (!item) return res.status(404).json({ message: 'Item não encontrado' });
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: 'Inventário ou item não encontrado' });
+    }
 
-    (item as any).observacao = observacao || '';
-    await inventario.save();
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Erro ao salvar observação:', error);
