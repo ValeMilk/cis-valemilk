@@ -1,8 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { Pedido } from '../types';
+import { Pedido, StatusPedido } from '../types';
 import { Plus, Eye, Search } from 'lucide-react';
+
+const statusConfig: Record<string, { label: string; color: string }> = {
+  [StatusPedido.RASCUNHO]: { label: 'Rascunho', color: 'bg-gray-100 text-gray-700' },
+  [StatusPedido.ANALISE_COTACAO]: { label: 'Análise Cotação', color: 'bg-yellow-100 text-yellow-700' },
+  [StatusPedido.ENVIADO_FORNECEDOR]: { label: 'Enviado Fornecedor', color: 'bg-blue-100 text-blue-700' },
+  [StatusPedido.AGUARDANDO_FATURAMENTO]: { label: 'Aguard. Faturamento', color: 'bg-orange-100 text-orange-700' },
+  [StatusPedido.FATURADO]: { label: 'Faturado', color: 'bg-indigo-100 text-indigo-700' },
+  [StatusPedido.EM_ROTA]: { label: 'Em Rota', color: 'bg-purple-100 text-purple-700' },
+  [StatusPedido.RECEBIMENTO_NOTA]: { label: 'Recebimento', color: 'bg-teal-100 text-teal-700' },
+  [StatusPedido.APROVADO_DIRETORIA]: { label: 'Aprovado', color: 'bg-green-100 text-green-700' },
+  [StatusPedido.CANCELADO]: { label: 'Cancelado', color: 'bg-red-100 text-red-700' },
+};
 
 export default function PedidosPage() {
   const navigate = useNavigate();
@@ -72,14 +84,15 @@ export default function PedidosPage() {
                 <th className="text-left p-4">Número</th>
                 <th className="text-left p-4">Fornecedor</th>
                 <th className="text-left p-4">Data</th>
-                <th className="text-left p-4">Itens</th>
+                <th className="text-center p-4">Itens</th>
+                <th className="text-center p-4">Status</th>
                 <th className="text-center p-4">Ações</th>
               </tr>
             </thead>
             <tbody>
               {filteredPedidos.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center p-8 text-gray-500">
+                  <td colSpan={7} className="text-center p-8 text-gray-500">
                     Nenhum pedido encontrado
                   </td>
                 </tr>
@@ -92,7 +105,17 @@ export default function PedidosPage() {
                     <td className="p-4">
                       {new Date(pedido.data_criacao).toLocaleDateString('pt-BR')}
                     </td>
-                    <td className="p-4">{pedido.itens.length}</td>
+                    <td className="p-4 text-center">{pedido.itens.length}</td>
+                    <td className="p-4 text-center">
+                      {(() => {
+                        const cfg = statusConfig[pedido.status_atual] || { label: pedido.status_atual, color: 'bg-gray-100 text-gray-700' };
+                        return (
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${cfg.color}`}>
+                            {cfg.label}
+                          </span>
+                        );
+                      })()}
+                    </td>
                     <td className="p-4 text-center">
                       <button
                         onClick={() => navigate(`/pedidos/${pedido._id}`)}
