@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middleware/auth';
+import { authMiddleware, requireRole } from '../middleware/auth';
+import { PerfilEnum } from '../types/enums';
 import { executeERPQuery, getAvariaQuery, ERPAvariaItem } from '../services/erp.service';
 import { Avaria, IAvariaItem } from '../models/Avaria';
 import { User } from '../models/User';
@@ -285,6 +286,20 @@ router.put('/:avariaId/resolvido', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao marcar resolvido:', error);
     res.status(500).json({ message: 'Erro ao marcar como resolvido' });
+  }
+});
+
+// DELETE - Excluir avaria finalizada (Admin only)
+router.delete('/:avariaId/admin', authMiddleware, requireRole(PerfilEnum.ADMIN), async (req, res) => {
+  try {
+    const avaria = await Avaria.findById(req.params.avariaId);
+    if (!avaria) return res.status(404).json({ message: 'Avaria não encontrada' });
+
+    await Avaria.findByIdAndDelete(req.params.avariaId);
+    res.json({ message: 'Avaria excluída com sucesso' });
+  } catch (error) {
+    console.error('❌ Erro ao excluir avaria:', error);
+    res.status(500).json({ message: 'Erro ao excluir avaria' });
   }
 });
 

@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import { PackageCheck, Search, Eye, Printer, Calendar, ChevronLeft, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { PackageCheck, Search, Eye, Printer, Calendar, ChevronLeft, ArrowUp, ArrowDown, ArrowUpDown, Trash2 } from 'lucide-react';
 import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import { PerfilEnum } from '../types';
 
 interface ReposicaoResumo {
   _id: string;
@@ -39,6 +41,7 @@ type SortField = 'codigo_item' | 'minimo' | 'dep_aberto' | 'producoes_aberto' | 
 type SortDir = 'none' | 'asc' | 'desc';
 
 const CentralReposicaoPage = () => {
+  const { user } = useAuth();
   const [reposicoes, setReposicoes] = useState<ReposicaoResumo[]>([]);
   const [loading, setLoading] = useState(true);
   const [detalhe, setDetalhe] = useState<ReposicaoDetalhe | null>(null);
@@ -50,7 +53,20 @@ const CentralReposicaoPage = () => {
   const [reposicaoFilter, setReposicaoFilter] = useState<'todos' | 'precisa_repor' | 'ok' | 'com_quantidade'>('todos');
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('none');
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
+
+  const isAdmin = user?.perfil === PerfilEnum.ADMIN;
+
+  const handleDeleteReposicao = async (id: string) => {
+    try {
+      await api.delete(`/reposicao/${id}/admin`);
+      setReposicoes(prev => prev.filter(r => r._id !== id));
+      setDeleteConfirmId(null);
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Erro ao excluir reposição');
+    }
+  };
 
   useEffect(() => {
     fetchFinalizados();
@@ -264,6 +280,7 @@ const CentralReposicaoPage = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center">
+                      <div className="flex items-center justify-center gap-2">
                       <button
                         onClick={() => abrirDetalhe(rep._id)}
                         className="inline-flex items-center space-x-1 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
@@ -271,6 +288,29 @@ const CentralReposicaoPage = () => {
                         <Eye size={14} />
                         <span>Ver Relatório</span>
                       </button>
+                      {isAdmin && (
+                        deleteConfirmId === rep._id ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleDeleteReposicao(rep._id)}
+                              className="px-2 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 text-xs font-medium"
+                            >Confirmar</button>
+                            <button
+                              onClick={() => setDeleteConfirmId(null)}
+                              className="px-2 py-1.5 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 text-xs font-medium"
+                            >Cancelar</button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setDeleteConfirmId(rep._id)}
+                            className="inline-flex items-center p-1.5 text-red-600 hover:bg-red-50 rounded"
+                            title="Excluir relatório"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )
+                      )}
+                      </div>
                     </td>
                   </tr>
                 ))}

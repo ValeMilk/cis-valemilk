@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middleware/auth';
+import { authMiddleware, requireRole } from '../middleware/auth';
+import { PerfilEnum } from '../types/enums';
 import { executeERPQuery, getInventarioFilialQuery, ERPInventarioFilialItem } from '../services/erp.service';
 import { InventarioFilial, IInventarioFilialItem } from '../models/InventarioFilial';
 import { User } from '../models/User';
@@ -310,6 +311,20 @@ router.put('/:inventarioId/resolvido', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao marcar resolvido:', error);
     res.status(500).json({ message: 'Erro ao marcar como resolvido' });
+  }
+});
+
+// DELETE - Excluir inventário filial finalizado (Admin only)
+router.delete('/:inventarioId/admin', authMiddleware, requireRole(PerfilEnum.ADMIN), async (req, res) => {
+  try {
+    const inventario = await InventarioFilial.findById(req.params.inventarioId);
+    if (!inventario) return res.status(404).json({ message: 'Inventário não encontrado' });
+
+    await InventarioFilial.findByIdAndDelete(req.params.inventarioId);
+    res.json({ message: 'Inventário excluído com sucesso' });
+  } catch (error) {
+    console.error('❌ Erro ao excluir inventário filial:', error);
+    res.status(500).json({ message: 'Erro ao excluir inventário' });
   }
 });
 

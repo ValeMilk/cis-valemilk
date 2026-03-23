@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middleware/auth';
+import { authMiddleware, requireRole } from '../middleware/auth';
+import { PerfilEnum } from '../types/enums';
 import { executeERPQuery, getInventarioQuery, ERPInventarioItem } from '../services/erp.service';
 import { Inventario, IInventarioItem } from '../models/Inventario';
 import { User } from '../models/User';
@@ -386,6 +387,20 @@ router.put('/:inventarioId/resolvido', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao marcar resolvido:', error);
     res.status(500).json({ message: 'Erro ao marcar como resolvido' });
+  }
+});
+
+// DELETE - Excluir inventário finalizado (Admin only)
+router.delete('/:inventarioId/admin', authMiddleware, requireRole(PerfilEnum.ADMIN), async (req, res) => {
+  try {
+    const inventario = await Inventario.findById(req.params.inventarioId);
+    if (!inventario) return res.status(404).json({ message: 'Inventário não encontrado' });
+
+    await Inventario.findByIdAndDelete(req.params.inventarioId);
+    res.json({ message: 'Inventário excluído com sucesso' });
+  } catch (error) {
+    console.error('❌ Erro ao excluir inventário:', error);
+    res.status(500).json({ message: 'Erro ao excluir inventário' });
   }
 });
 

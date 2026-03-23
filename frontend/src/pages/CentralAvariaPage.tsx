@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import { AlertTriangle, Search, Eye, Printer, Calendar, ChevronLeft, ArrowUp, ArrowDown, ArrowUpDown, CheckCircle, ClipboardCheck, X } from 'lucide-react';
+import { AlertTriangle, Search, Eye, Printer, Calendar, ChevronLeft, ArrowUp, ArrowDown, ArrowUpDown, CheckCircle, ClipboardCheck, X, Trash2 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { PerfilEnum } from '../types';
@@ -57,7 +57,20 @@ const CentralAvariaPage = () => {
   const [showResolvidoModal, setShowResolvidoModal] = useState(false);
   const [resolvidoObs, setResolvidoObs] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
+
+  const isAdmin = user?.perfil === PerfilEnum.ADMIN;
+
+  const handleDeleteAvaria = async (id: string) => {
+    try {
+      await api.delete(`/avaria/${id}/admin`);
+      setAvarias(prev => prev.filter(a => a._id !== id));
+      setDeleteConfirmId(null);
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Erro ao excluir avaria');
+    }
+  };
 
   useEffect(() => {
     fetchFinalizados();
@@ -354,6 +367,7 @@ const CentralAvariaPage = () => {
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => abrirDetalhe(av._id)}
                           className="inline-flex items-center space-x-1 px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
@@ -361,6 +375,29 @@ const CentralAvariaPage = () => {
                           <Eye size={14} />
                           <span>Ver Relatório</span>
                         </button>
+                        {isAdmin && (
+                          deleteConfirmId === av._id ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleDeleteAvaria(av._id)}
+                                className="px-2 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 text-xs font-medium"
+                              >Confirmar</button>
+                              <button
+                                onClick={() => setDeleteConfirmId(null)}
+                                className="px-2 py-1.5 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 text-xs font-medium"
+                              >Cancelar</button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setDeleteConfirmId(av._id)}
+                              className="inline-flex items-center p-1.5 text-red-600 hover:bg-red-50 rounded"
+                              title="Excluir relatório"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )
+                        )}
+                        </div>
                       </td>
                     </tr>
                   );

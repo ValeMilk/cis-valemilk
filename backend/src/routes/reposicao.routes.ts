@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middleware/auth';
+import { authMiddleware, requireRole } from '../middleware/auth';
+import { PerfilEnum } from '../types/enums';
 import { executeERPQuery, getReposicaoQuery, ERPReposicaoItem } from '../services/erp.service';
 import { Reposicao } from '../models/Reposicao';
 import { User } from '../models/User';
@@ -146,6 +147,20 @@ router.put('/:id/finalizar', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao finalizar reposição:', error);
     res.status(500).json({ message: 'Erro ao finalizar reposição' });
+  }
+});
+
+// DELETE - Excluir reposição finalizada (Admin only)
+router.delete('/:id/admin', authMiddleware, requireRole(PerfilEnum.ADMIN), async (req, res) => {
+  try {
+    const reposicao = await Reposicao.findById(req.params.id);
+    if (!reposicao) return res.status(404).json({ message: 'Reposição não encontrada' });
+
+    await Reposicao.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Reposição excluída com sucesso' });
+  } catch (error) {
+    console.error('❌ Erro ao excluir reposição:', error);
+    res.status(500).json({ message: 'Erro ao excluir reposição' });
   }
 });
 
