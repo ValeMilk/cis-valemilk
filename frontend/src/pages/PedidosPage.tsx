@@ -37,12 +37,6 @@ function MultiSelectDropdown({ label, options, selected, onChange, renderOption 
 
   const filtered = options.filter(o => o.toLowerCase().includes(search.toLowerCase()));
 
-  const toggle = (val: string) => {
-    const next = new Set(selected);
-    if (next.has(val)) next.delete(val); else next.add(val);
-    onChange(next);
-  };
-
   const selectAll = () => onChange(new Set(filtered));
   const clearAll = () => {
     const next = new Set(selected);
@@ -84,6 +78,7 @@ function MultiSelectDropdown({ label, options, selected, onChange, renderOption 
             {filtered.map(option => (
               <label
                 key={option}
+                onClick={() => { const next = new Set(selected); if (next.has(option)) next.delete(option); else next.add(option); onChange(next); }}
                 className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-sm"
               >
                 <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
