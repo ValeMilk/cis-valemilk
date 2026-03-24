@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Package, Search, Filter, ShoppingCart, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import api from '../services/api';
 import { Item, StatusPedido } from '../types';
+import MultiSelectDropdown from '../components/MultiSelectDropdown';
 
 const ItemsAnalysisPage = () => {
   const navigate = useNavigate();
@@ -10,9 +11,9 @@ const ItemsAnalysisPage = () => {
   const [filteredItems, setFilteredItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [tipoFilter, setTipoFilter] = useState<string>('');
-  const [fornecedorFilter, setFornecedorFilter] = useState<string>('');
-  const [classeFilter, setClasseFilter] = useState<string>('');
+  const [selectedTipos, setSelectedTipos] = useState<Set<string>>(new Set());
+  const [selectedFornecedores, setSelectedFornecedores] = useState<Set<string>>(new Set());
+  const [selectedClasses, setSelectedClasses] = useState<Set<string>>(new Set());
   const [prevFimFilter, setPrevFimFilter] = useState<string>('');
   const [prevFimDate, setPrevFimDate] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
@@ -27,9 +28,8 @@ const ItemsAnalysisPage = () => {
   }, []);
 
   useEffect(() => {
-    console.log('🔄 useEffect disparado - mudança em filtros detectada');
     filterItems();
-  }, [items, searchTerm, tipoFilter, fornecedorFilter, classeFilter, prevFimFilter, prevFimDate, sortColumn, sortDirection]);
+  }, [items, searchTerm, selectedTipos, selectedFornecedores, selectedClasses, prevFimFilter, prevFimDate, sortColumn, sortDirection]);
 
   const fetchItems = async () => {
     try {
@@ -56,9 +56,6 @@ const ItemsAnalysisPage = () => {
   const filterItems = () => {
     let filtered = [...items];
 
-    console.log('🔍 Aplicando filtros:', { searchTerm, tipoFilter, fornecedorFilter, classeFilter, prevFimFilter });
-    console.log('📦 Total items antes:', items.length);
-
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
@@ -66,28 +63,31 @@ const ItemsAnalysisPage = () => {
           item.descricao.toLowerCase().includes(term) ||
           item.codigo_item.toLowerCase().includes(term)
       );
-      console.log('✅ Após busca:', filtered.length);
     }
 
-    if (tipoFilter) {
-      filtered = filtered.filter((item) => item.tipo === tipoFilter);
-      console.log('✅ Após filtro tipo:', filtered.length);
+    if (selectedTipos.size > 0) {
+      filtered = filtered.filter((item) => selectedTipos.has(item.tipo));
     }
 
-    if (fornecedorFilter) {
-      const codigosFornecedor = fornecedorItensMap[fornecedorFilter];
-      if (codigosFornecedor && codigosFornecedor.length > 0) {
-        const codigosSet = new Set(codigosFornecedor);
-        filtered = filtered.filter((item) => codigosSet.has(item.codigo_item));
-      } else {
-        filtered = filtered.filter((item) => item.fornecedor === fornecedorFilter);
-      }
-      console.log('✅ Após filtro fornecedor:', filtered.length, 'Buscando:', fornecedorFilter);
+    if (selectedFornecedores.size > 0) {
+      // Build a set of all item codes that belong to any selected fornecedor
+      const allCodigosSet = new Set<string>();
+      const fornecedoresSemMapa = new Set<string>();
+      selectedFornecedores.forEach(f => {
+        const codigos = fornecedorItensMap[f];
+        if (codigos && codigos.length > 0) {
+          codigos.forEach(c => allCodigosSet.add(c));
+        } else {
+          fornecedoresSemMapa.add(f);
+        }
+      });
+      filtered = filtered.filter((item) =>
+        allCodigosSet.has(item.codigo_item) || fornecedoresSemMapa.has(item.fornecedor)
+      );
     }
 
-    if (classeFilter) {
-      filtered = filtered.filter((item) => item.classe_abc === classeFilter);
-      console.log('✅ Após filtro classe:', filtered.length);
+    if (selectedClasses.size > 0) {
+      filtered = filtered.filter((item) => selectedClasses.has(item.classe_abc));
     }
 
     if (prevFimFilter) {
@@ -136,7 +136,6 @@ const ItemsAnalysisPage = () => {
         
         return true;
       });
-      console.log('✅ Após filtro prev.fim:', filtered.length);
     }
 
     // Filtro por data específica
@@ -161,11 +160,8 @@ const ItemsAnalysisPage = () => {
         // Retorna itens com data de fim <= data selecionada
         return dataPrevFim <= dataSelecionada;
       });
-      console.log('✅ Após filtro data específica:', filtered.length);
     }
 
-    console.log('🎯 Total filtrado final:', filtered.length);
-    
     // Aplicar ordenação se houver coluna selecionada
     if (sortColumn) {
       filtered = sortItems(filtered, sortColumn, sortDirection);
@@ -463,8 +459,6 @@ const ItemsAnalysisPage = () => {
     );
   }
 
-  console.log('🎨 RENDERIZANDO - filteredItems.length:', filteredItems.length, 'items.length:', items.length);
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -511,21 +505,12 @@ const ItemsAnalysisPage = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Tipo
             </label>
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <select
-                value={tipoFilter}
-                onChange={(e) => setTipoFilter(e.target.value)}
-                className="pl-10 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
-              >
-                <option value="">Todos os Tipos</option>
-                {uniqueTipos.map((tipo) => (
-                  <option key={tipo} value={tipo}>
-                    {tipo}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <MultiSelectDropdown
+              label="Todos os Tipos"
+              options={uniqueTipos}
+              selected={selectedTipos}
+              onChange={setSelectedTipos}
+            />
           </div>
 
           {/* Fornecedor Filter */}
@@ -533,21 +518,12 @@ const ItemsAnalysisPage = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Fornecedor
             </label>
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <select
-                value={fornecedorFilter}
-                onChange={(e) => setFornecedorFilter(e.target.value)}
-                className="pl-10 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
-              >
-                <option value="">Todos os Fornecedores</option>
-                {uniqueFornecedores.map((fornecedor) => (
-                  <option key={fornecedor} value={fornecedor}>
-                    {fornecedor}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <MultiSelectDropdown
+              label="Todos os Fornecedores"
+              options={uniqueFornecedores}
+              selected={selectedFornecedores}
+              onChange={setSelectedFornecedores}
+            />
           </div>
 
           {/* Classe ABC Filter */}
@@ -555,19 +531,12 @@ const ItemsAnalysisPage = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Classe ABC
             </label>
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <select
-                value={classeFilter}
-                onChange={(e) => setClasseFilter(e.target.value)}
-                className="pl-10 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
-              >
-                <option value="">Todas as Classes</option>
-                <option value="A">Classe A</option>
-                <option value="B">Classe B</option>
-                <option value="C">Classe C</option>
-              </select>
-            </div>
+            <MultiSelectDropdown
+              label="Todas as Classes"
+              options={['A', 'B', 'C']}
+              selected={selectedClasses}
+              onChange={setSelectedClasses}
+            />
           </div>
 
           {/* Previsão Fim Filter */}
@@ -614,14 +583,14 @@ const ItemsAnalysisPage = () => {
         </div>
 
         {/* Clear Filters Button */}
-        {(searchTerm || tipoFilter || fornecedorFilter || classeFilter || prevFimFilter || prevFimDate) && (
+        {(searchTerm || selectedTipos.size > 0 || selectedFornecedores.size > 0 || selectedClasses.size > 0 || prevFimFilter || prevFimDate) && (
           <div className="mt-4 flex justify-end">
             <button
               onClick={() => {
                 setSearchTerm('');
-                setTipoFilter('');
-                setFornecedorFilter('');
-                setClasseFilter('');
+                setSelectedTipos(new Set());
+                setSelectedFornecedores(new Set());
+                setSelectedClasses(new Set());
                 setPrevFimFilter('');
                 setPrevFimDate('');
               }}
@@ -794,7 +763,7 @@ const ItemsAnalysisPage = () => {
               </tr>
             </thead>
             <tbody 
-              key={`tbody-${filteredItems.length}-${searchTerm}-${tipoFilter}-${fornecedorFilter}-${classeFilter}-${prevFimFilter}`}
+              key={`tbody-${filteredItems.length}-${searchTerm}-${selectedTipos.size}-${selectedFornecedores.size}-${selectedClasses.size}-${prevFimFilter}`}
               className="bg-white divide-y divide-gray-200"
             >
               {filteredItems.length === 0 ? (
@@ -806,7 +775,6 @@ const ItemsAnalysisPage = () => {
                 </tr>
               ) : (
                 filteredItems.map((item, index) => {
-                  console.log(`🔸 Renderizando item ${index + 1}/${filteredItems.length}:`, item.codigo_item, item.fornecedor);
                   return (
                   <tr
                     key={`${item.id}-${index}-filtered`}
