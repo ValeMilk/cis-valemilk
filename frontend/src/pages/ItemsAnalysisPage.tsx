@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, Search, Filter, ShoppingCart, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Package, Search, ShoppingCart, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import api from '../services/api';
 import { Item, StatusPedido } from '../types';
 import MultiSelectDropdown from '../components/MultiSelectDropdown';
@@ -14,7 +14,7 @@ const ItemsAnalysisPage = () => {
   const [selectedTipos, setSelectedTipos] = useState<Set<string>>(new Set());
   const [selectedFornecedores, setSelectedFornecedores] = useState<Set<string>>(new Set());
   const [selectedClasses, setSelectedClasses] = useState<Set<string>>(new Set());
-  const [prevFimFilter, setPrevFimFilter] = useState<string>('');
+  const [selectedPrevFim, setSelectedPrevFim] = useState<Set<string>>(new Set());
   const [prevFimDate, setPrevFimDate] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
@@ -29,7 +29,7 @@ const ItemsAnalysisPage = () => {
 
   useEffect(() => {
     filterItems();
-  }, [items, searchTerm, selectedTipos, selectedFornecedores, selectedClasses, prevFimFilter, prevFimDate, sortColumn, sortDirection]);
+  }, [items, searchTerm, selectedTipos, selectedFornecedores, selectedClasses, selectedPrevFim, prevFimDate, sortColumn, sortDirection]);
 
   const fetchItems = async () => {
     try {
@@ -90,51 +90,45 @@ const ItemsAnalysisPage = () => {
       filtered = filtered.filter((item) => selectedClasses.has(item.classe_abc));
     }
 
-    if (prevFimFilter) {
+    if (selectedPrevFim.size > 0) {
       filtered = filtered.filter((item) => {
         const prevFim = item.previsao_fim_estoque || '';
         
-        if (prevFimFilter === 'Sem Estoque') return prevFim === 'Sem Estoque';
-        if (prevFimFilter === 'Sem Consumo') return prevFim === 'Sem Consumo';
-        
-        // Filtros por período de dias
-        if (prevFimFilter === '30dias' || prevFimFilter === '60dias' || prevFimFilter === '90dias') {
-          // Verifica se tem uma data válida (não é "Sem Estoque", "Sem Consumo" ou "-")
-          if (prevFim === 'Sem Estoque' || prevFim === 'Sem Consumo' || prevFim === '-' || !prevFim) {
-            return false;
+        const matchesFilter = (f: string): boolean => {
+          if (f === 'Sem Estoque') return prevFim === 'Sem Estoque';
+          if (f === 'Sem Consumo') return prevFim === 'Sem Consumo';
+          
+          if (f === '30dias' || f === '60dias' || f === '90dias') {
+            if (prevFim === 'Sem Estoque' || prevFim === 'Sem Consumo' || prevFim === '-' || !prevFim) return false;
+            const [dia, mes, ano] = prevFim.split('/').map(Number);
+            const dataPrevFim = new Date(ano, mes - 1, dia);
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+            const diffTime = dataPrevFim.getTime() - hoje.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (f === '30dias') return diffDays <= 30 && diffDays >= 0;
+            if (f === '60dias') return diffDays <= 60 && diffDays >= 0;
+            if (f === '90dias') return diffDays <= 90 && diffDays >= 0;
           }
           
-          // Converte a data de dd/MM/yyyy para Date
-          const [dia, mes, ano] = prevFim.split('/').map(Number);
-          const dataPrevFim = new Date(ano, mes - 1, dia);
-          const hoje = new Date();
-          hoje.setHours(0, 0, 0, 0);
-          
-          // Calcula diferença em dias
-          const diffTime = dataPrevFim.getTime() - hoje.getTime();
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          
-          if (prevFimFilter === '30dias') return diffDays <= 30 && diffDays >= 0;
-          if (prevFimFilter === '60dias') return diffDays <= 60 && diffDays >= 0;
-          if (prevFimFilter === '90dias') return diffDays <= 90 && diffDays >= 0;
-        }
-        
-        if (prevFimFilter === 'Com Data') {
-          return prevFim !== 'Sem Estoque' && prevFim !== 'Sem Consumo' && prevFim !== '-' && prevFim;
-        }
-        
-        if (prevFimFilter === 'Vencido') {
-          if (prevFim === 'Sem Estoque' || prevFim === 'Sem Consumo' || prevFim === '-' || !prevFim) {
-            return false;
+          if (f === 'Com Data') {
+            return prevFim !== 'Sem Estoque' && prevFim !== 'Sem Consumo' && prevFim !== '-' && !!prevFim;
           }
-          const [dia, mes, ano] = prevFim.split('/').map(Number);
-          const dataPrevFim = new Date(ano, mes - 1, dia);
-          const hoje = new Date();
-          hoje.setHours(0, 0, 0, 0);
-          return dataPrevFim < hoje;
-        }
+          
+          if (f === 'Vencido') {
+            if (prevFim === 'Sem Estoque' || prevFim === 'Sem Consumo' || prevFim === '-' || !prevFim) return false;
+            const [dia, mes, ano] = prevFim.split('/').map(Number);
+            const dataPrevFim = new Date(ano, mes - 1, dia);
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+            return dataPrevFim < hoje;
+          }
+          
+          return false;
+        };
         
-        return true;
+        // Item passa se corresponder a QUALQUER filtro selecionado
+        return Array.from(selectedPrevFim).some(f => matchesFilter(f));
       });
     }
 
@@ -544,23 +538,24 @@ const ItemsAnalysisPage = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Prev. Fim Estoque
             </label>
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <select
-                value={prevFimFilter}
-                onChange={(e) => setPrevFimFilter(e.target.value)}
-                className="pl-10 w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
-              >
-                <option value="">Todos</option>
-                <option value="Vencido">Já Vencido</option>
-                <option value="30dias">Vence em até 30 dias</option>
-                <option value="60dias">Vence em até 60 dias</option>
-                <option value="90dias">Vence em até 90 dias</option>
-                <option value="Com Data">Com Data Prevista</option>
-                <option value="Sem Estoque">Sem Estoque</option>
-                <option value="Sem Consumo">Sem Consumo</option>
-              </select>
-            </div>
+            <MultiSelectDropdown
+              label="Todos"
+              options={['Vencido', '30dias', '60dias', '90dias', 'Com Data', 'Sem Estoque', 'Sem Consumo']}
+              selected={selectedPrevFim}
+              onChange={setSelectedPrevFim}
+              renderOption={(o) => {
+                const labels: Record<string, string> = {
+                  'Vencido': 'Já Vencido',
+                  '30dias': 'Vence em até 30 dias',
+                  '60dias': 'Vence em até 60 dias',
+                  '90dias': 'Vence em até 90 dias',
+                  'Com Data': 'Com Data Prevista',
+                  'Sem Estoque': 'Sem Estoque',
+                  'Sem Consumo': 'Sem Consumo',
+                };
+                return labels[o] || o;
+              }}
+            />
           </div>
 
           {/* Data Específica Filter */}
@@ -583,7 +578,7 @@ const ItemsAnalysisPage = () => {
         </div>
 
         {/* Clear Filters Button */}
-        {(searchTerm || selectedTipos.size > 0 || selectedFornecedores.size > 0 || selectedClasses.size > 0 || prevFimFilter || prevFimDate) && (
+        {(searchTerm || selectedTipos.size > 0 || selectedFornecedores.size > 0 || selectedClasses.size > 0 || selectedPrevFim.size > 0 || prevFimDate) && (
           <div className="mt-4 flex justify-end">
             <button
               onClick={() => {
@@ -591,7 +586,7 @@ const ItemsAnalysisPage = () => {
                 setSelectedTipos(new Set());
                 setSelectedFornecedores(new Set());
                 setSelectedClasses(new Set());
-                setPrevFimFilter('');
+                setSelectedPrevFim(new Set());
                 setPrevFimDate('');
               }}
               className="text-sm text-blue-600 hover:text-blue-700 font-medium"
@@ -763,7 +758,7 @@ const ItemsAnalysisPage = () => {
               </tr>
             </thead>
             <tbody 
-              key={`tbody-${filteredItems.length}-${searchTerm}-${selectedTipos.size}-${selectedFornecedores.size}-${selectedClasses.size}-${prevFimFilter}`}
+              key={`tbody-${filteredItems.length}-${searchTerm}-${selectedTipos.size}-${selectedFornecedores.size}-${selectedClasses.size}-${selectedPrevFim.size}`}
               className="bg-white divide-y divide-gray-200"
             >
               {filteredItems.length === 0 ? (
