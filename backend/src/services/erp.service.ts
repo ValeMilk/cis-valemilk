@@ -926,3 +926,63 @@ WHERE upf.rn = 1 AND upf.E02_DESC NOT LIKE '%paa leite%'
 ORDER BY Cod ASC;
   `;
 };
+
+// Query para Estoque e Vencimento - Produto Acabado (tipo 4)
+export const getEstoqueVencimentoQuery = (): string => {
+  return `
+    WITH UltimoPorFornecedor AS (
+        SELECT
+            M00.M00_ENTSAI,
+            M01.M01_ID_E02,
+            E02.E02_DESC,
+            E02.E02_UM,
+            E02.E02_TIPO,
+            E02.E02_LIVRE,
+            
+            CASE E02.E02_TIPO
+                WHEN 4 THEN 'Produto Acabado'
+                ELSE 'Outro'
+            END AS TIPO_DESC,
+            
+            ROW_NUMBER() OVER (
+                PARTITION BY M01.M01_ID_E02
+                ORDER BY M00.M00_ENTSAI DESC, M00.M00_ID DESC
+            ) AS rn
+        FROM dbo.M00
+        INNER JOIN dbo.M01 ON M00.M00_ID = M01.M01_ID_M00
+        INNER JOIN dbo.E02 ON E02.E02_ID = M01.M01_ID_E02
+        INNER JOIN dbo.E01 ON E01.E01_ID = E02.E02_ID_E01
+        LEFT JOIN dbo.A00 ON M00.M00_ID_A00 = A00.A00_ID
+        WHERE M00.M00_DTLANC >= '2023-09-01'
+          AND M00.M00_ID_EMP IN (80, 81, 82)
+          AND M00.M00_STATUS = 'N'
+          AND E02.E02_TIPO IN (4)
+          AND E02.E02_ATIVO = 1
+          AND E01.E01_DESC <> 'Outros'
+          AND M01.M01_ID_E02 <> 1
+    )
+    SELECT
+        upf.TIPO_DESC AS Tipo,
+        upf.E02_LIVRE AS Cod,
+        upf.E02_DESC AS Descricao,
+        upf.E02_UM AS UM,
+
+        ISNULL(e02vol.E02_INFADPROD_VOL, '') AS TipoVolume,
+        ISNULL(e02vol.E02_VOL_BASE, 0) AS UnidadesPorVolume
+
+    FROM UltimoPorFornecedor upf
+    LEFT JOIN dbo.E02 e02vol ON e02vol.E02_ID = upf.M01_ID_E02
+
+    WHERE upf.rn = 1 AND upf.E02_DESC NOT LIKE '%paa leite%'
+    ORDER BY Cod ASC;
+  `;
+};
+
+export interface ERPEstoqueVencimentoItem {
+  Tipo: string;
+  Cod: string;
+  Descricao: string;
+  UM: string;
+  TipoVolume: string;
+  UnidadesPorVolume: number;
+}

@@ -16,6 +16,8 @@ import CentralReposicaoPage from './pages/CentralReposicaoPage';
 import InventarioFilialPage from './pages/InventarioFilialPage';
 import AvariaPage from './pages/AvariaPage';
 import CentralAvariaPage from './pages/CentralAvariaPage';
+import EstoqueVencimentoPage from './pages/EstoqueVencimentoPage';
+import CentralEstoqueVencimentoPage from './pages/CentralEstoqueVencimentoPage';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -178,6 +180,26 @@ function App() {
           <ProtectedRoute>
             <Layout>
               <CentralAvariaPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/estoque-vencimento"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <EstoqueVencimentoPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/central-estoque-vencimento"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <CentralEstoqueVencimentoPage />
             </Layout>
           </ProtectedRoute>
         }

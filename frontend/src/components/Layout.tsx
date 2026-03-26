@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, LayoutDashboard, ShoppingCart, Package, Building2, Users, BarChart3, ClipboardList, Archive, PackageCheck, AlertTriangle } from 'lucide-react';
+import { LogOut, LayoutDashboard, ShoppingCart, Package, Building2, Users, BarChart3, ClipboardList, Archive, PackageCheck, AlertTriangle, CalendarClock } from 'lucide-react';
 import { PerfilEnum } from '../types';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -81,6 +81,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </Link>
             <Link to="/central-reposicao" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
               <PackageCheck size={16} /><span>Central Reposição</span>
+            </Link>
+            {(user?.perfil === PerfilEnum.FILIAL || user?.perfil === PerfilEnum.ADMIN) && (
+              <Link to="/estoque-vencimento" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
+                <CalendarClock size={16} /><span>Est. Vencimento</span>
+              </Link>
+            )}
+            <Link to="/central-estoque-vencimento" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
+              <CalendarClock size={16} /><span>Central Est. Venc.</span>
             </Link>
             {user?.perfil === PerfilEnum.ADMIN && (
               <Link to="/usuarios" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
