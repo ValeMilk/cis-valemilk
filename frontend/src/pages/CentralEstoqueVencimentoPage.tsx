@@ -9,6 +9,7 @@ interface ResumoReport {
   _id: string;
   data_snapshot: string;
   criado_por_nome: string;
+  deposito?: string;
   total_itens: number;
   itens_com_entrada: number;
   itens_ruptura: number;
@@ -41,6 +42,7 @@ interface ReportDetail {
   data_snapshot: string;
   status: string;
   criado_por_nome: string;
+  deposito?: string;
   data_finalizacao?: string;
   itens: ItemDetail[];
   visto_por_nome?: string;
@@ -193,8 +195,9 @@ const CentralEstoqueVencimentoPage = () => {
             </button>
             <h1 className="text-2xl font-bold text-gray-900">Relatório - Estoque e Vencimento</h1>
             <p className="text-gray-600 mt-1">
-              Responsável: <span className="font-medium">{selectedReport.criado_por_nome}</span> | 
-              Data: {formatDateTime(selectedReport.data_snapshot)}
+              Responsável: <span className="font-medium">{selectedReport.criado_por_nome}</span>
+              {selectedReport.deposito && <> | <span className="font-medium">{selectedReport.deposito}</span></>}
+              {' | '}Data: {formatDateTime(selectedReport.data_snapshot)}
               {selectedReport.data_finalizacao && ` | Finalizado: ${formatDateTime(selectedReport.data_finalizacao)}`}
             </p>
           </div>
@@ -335,7 +338,9 @@ const CentralEstoqueVencimentoPage = () => {
               <div style={{ flexGrow: 1, textAlign: 'center' }}>
                 <h1 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>ESTOQUE E VENCIMENTO</h1>
                 <p style={{ fontSize: '12px', color: '#666', margin: '4px 0 0' }}>
-                  Responsável: {selectedReport.criado_por_nome} | Data: {formatDateTime(selectedReport.data_snapshot)}
+                  Responsável: {selectedReport.criado_por_nome}
+                  {selectedReport.deposito && ` | ${selectedReport.deposito}`}
+                  {' | '}Data: {formatDateTime(selectedReport.data_snapshot)}
                   {selectedReport.data_finalizacao && ` | Finalizado: ${formatDateTime(selectedReport.data_finalizacao)}`}
                 </p>
               </div>
@@ -394,7 +399,7 @@ const CentralEstoqueVencimentoPage = () => {
             )}
 
             <div style={{ marginTop: '30px', fontSize: '10px', color: '#999', textAlign: 'center' }}>
-              Gerado em {new Date().toLocaleString('pt-BR')} — Sistema CIS Vale Milk
+              Gerado em {new Date().toLocaleString('pt-BR')} — Sistema Vale Supply
             </div>
           </div>
         </div>
@@ -472,6 +477,7 @@ const CentralEstoqueVencimentoPage = () => {
               <tr>
                 <th className="px-4 py-3 text-left font-medium text-gray-700">Data</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-700">Responsável</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-700">Depósito</th>
                 <th className="px-4 py-3 text-center font-medium text-gray-700">Produtos</th>
                 <th className="px-4 py-3 text-center font-medium text-gray-700">Contados</th>
                 <th className="px-4 py-3 text-center font-medium text-gray-700">Ruptura</th>
@@ -484,6 +490,7 @@ const CentralEstoqueVencimentoPage = () => {
                 <tr key={r._id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">{formatDateTime(r.data_snapshot)}</td>
                   <td className="px-4 py-3">{r.criado_por_nome}</td>
+                  <td className="px-4 py-3">{r.deposito || '-'}</td>
                   <td className="px-4 py-3 text-center">{r.total_itens}</td>
                   <td className="px-4 py-3 text-center text-green-600 font-medium">{r.itens_com_entrada}</td>
                   <td className="px-4 py-3 text-center">

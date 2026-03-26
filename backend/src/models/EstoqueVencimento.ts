@@ -22,6 +22,7 @@ export interface IEstoqueVencimento extends Document {
   status: 'em_andamento' | 'finalizado';
   criado_por: string;
   criado_por_nome: string;
+  deposito: string;
   itens: IEstoqueVencimentoItem[];
   visto_por?: string;
   visto_por_nome?: string;
@@ -56,6 +57,7 @@ const EstoqueVencimentoSchema = new Schema({
   status: { type: String, enum: ['em_andamento', 'finalizado'], default: 'em_andamento' },
   criado_por: { type: String, required: true },
   criado_por_nome: { type: String, required: true },
+  deposito: { type: String, default: '' },
   itens: [EstoqueVencimentoItemSchema],
   visto_por: { type: String },
   visto_por_nome: { type: String },

@@ -25,11 +25,10 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
     const userDoc = await User.findById(user.id).select('nome');
     const nomeUsuario = userDoc?.nome || user.email;
 
-    // Obter depósitos selecionados (padrão: todos)
-    const { depositos = [1, 2, 3, 4, 5] } = req.body;
+    const { deposito = '' } = req.body;
 
-    console.log(`🔄 Carregando produtos acabados do ERP para depósitos: ${depositos.join(', ')}`);
-    const erpItems = await executeERPQuery<ERPEstoqueVencimentoItem>(getEstoqueVencimentoQuery(depositos));
+    console.log('🔄 Carregando produtos acabados do ERP para Estoque e Vencimento...');
+    const erpItems = await executeERPQuery<ERPEstoqueVencimentoItem>(getEstoqueVencimentoQuery());
     console.log(`✅ ${erpItems.length} produtos acabados carregados do ERP para Estoque e Vencimento`);
 
     const itens: IEstoqueVencimentoItem[] = erpItems.map(erpItem => ({
@@ -72,6 +71,7 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
         status: 'em_andamento',
         criado_por: user.id,
         criado_por_nome: nomeUsuario,
+        deposito,
         itens
       });
       await novo.save();
@@ -179,7 +179,7 @@ router.get('/finalizados', authMiddleware, async (req, res) => {
     }
 
     const reports = await EstoqueVencimento.find(filtro)
-      .select('data_snapshot criado_por_nome itens visto_por_nome visto_data resolvido_por_nome resolvido_data resolvido_observacao')
+      .select('data_snapshot criado_por_nome deposito itens visto_por_nome visto_data resolvido_por_nome resolvido_data resolvido_observacao')
       .sort({ data_snapshot: -1 });
 
     const resumo = reports.map(r => {
@@ -200,6 +200,7 @@ router.get('/finalizados', authMiddleware, async (req, res) => {
         _id: r._id,
         data_snapshot: r.data_snapshot,
         criado_por_nome: r.criado_por_nome,
+        deposito: r.deposito || '',
         total_itens: r.itens.length,
         itens_com_entrada: itensComEntrada,
         itens_ruptura: itensRuptura,

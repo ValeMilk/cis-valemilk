@@ -928,16 +928,7 @@ ORDER BY Cod ASC;
 };
 
 // Query para Estoque e Vencimento - Produto Acabado (tipo 4)
-export const getEstoqueVencimentoQuery = (depositos: number[] = [1, 2, 3, 4, 5]): string => {
-  // Criar colunas dinamicamente para cada depósito selecionado
-  const depositoCases = depositos.map(dep => 
-    `SUM(CASE WHEN E03_ID_E00 = ${dep} THEN ISNULL(E03_SLDQTD, 0) ELSE 0 END) AS SALDO_DEP_${dep}`
-  ).join(',\n        ');
-  
-  const depositoColumns = depositos.map(dep => 
-    `FORMAT(ISNULL(es.SALDO_DEP_${dep}, 0), 'N3', 'pt-BR') AS [Depósito ${dep}]`
-  ).join(',\n    ');
-
+export const getEstoqueVencimentoQuery = (): string => {
   return `
     WITH UltimoPorFornecedor AS (
         SELECT
@@ -969,27 +960,17 @@ export const getEstoqueVencimentoQuery = (depositos: number[] = [1, 2, 3, 4, 5])
           AND E02.E02_ATIVO = 1
           AND E01.E01_DESC <> 'Outros'
           AND M01.M01_ID_E02 <> 1
-    ),
-    EstoqueSaldo AS (
-        SELECT
-            E03_ID_E02,
-            ${depositoCases}
-        FROM dbo.E03
-        WHERE E03_ID_E00 IN (${depositos.join(', ')})
-          AND E03_ID_E02 <> 1
-        GROUP BY E03_ID_E02
     )
     SELECT
         upf.TIPO_DESC AS Tipo,
         upf.E02_LIVRE AS Cod,
         upf.E02_DESC AS Descricao,
         upf.E02_UM AS UM,
-        ${depositoColumns},
+
         ISNULL(e02vol.E02_INFADPROD_VOL, '') AS TipoVolume,
         ISNULL(e02vol.E02_VOL_BASE, 0) AS UnidadesPorVolume
 
     FROM UltimoPorFornecedor upf
-    LEFT JOIN EstoqueSaldo es ON upf.M01_ID_E02 = es.E03_ID_E02
     LEFT JOIN dbo.E02 e02vol ON e02vol.E02_ID = upf.M01_ID_E02
 
     WHERE upf.rn = 1 AND upf.E02_DESC NOT LIKE '%paa leite%'
@@ -1004,5 +985,4 @@ export interface ERPEstoqueVencimentoItem {
   UM: string;
   TipoVolume: string;
   UnidadesPorVolume: number;
-  [key: string]: string | number; // Para campos dinâmicos como "Depósito 1", "Depósito 2", etc.
 }

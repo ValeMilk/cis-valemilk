@@ -24,6 +24,7 @@ interface Report {
   data_snapshot: string;
   status: string;
   criado_por_nome: string;
+  deposito?: string;
   itens: ItemEstoqueVencimento[];
 }
 
@@ -38,17 +39,8 @@ const EstoqueVencimentoPage = () => {
   const [newQuantidade, setNewQuantidade] = useState<string>('');
   const [newValidade, setNewValidade] = useState<string>('');
   
-  // Seleção de depósitos
-  const [selectedDepositos, setSelectedDepositos] = useState<number[]>([1, 2, 3, 4, 5]);
-  const [showDepositoModal, setShowDepositoModal] = useState(false);
-
-  const depositosOptions = [
-    { id: 1, label: 'Depósito 1' },
-    { id: 2, label: 'Depósito 2' },
-    { id: 3, label: 'Depósito 3' },
-    { id: 4, label: 'Depósito 4' },
-    { id: 5, label: 'Depósito 5' }
-  ];
+  // Seleção de depósito
+  const [selectedDeposito, setSelectedDeposito] = useState<string>('');
 
   const printRef = useRef<HTMLDivElement>(null);
   const handlePrint = useReactToPrint({ contentRef: printRef });
@@ -70,16 +62,15 @@ const EstoqueVencimentoPage = () => {
   };
 
   const handleSyncERP = async () => {
-    if (selectedDepositos.length === 0) {
-      alert('Selecione pelo menos um depósito');
+    if (!selectedDeposito) {
+      alert('Selecione o depósito');
       return;
     }
 
     try {
       setSyncing(true);
-      const res = await api.post('/estoque-vencimento/sync-erp', { depositos: selectedDepositos });
+      const res = await api.post('/estoque-vencimento/sync-erp', { deposito: selectedDeposito });
       setReport(res.data);
-      setShowDepositoModal(false);
     } catch (error) {
       console.error('Erro ao sincronizar ERP:', error);
       alert('Erro ao carregar produtos do ERP');
@@ -209,14 +200,31 @@ const EstoqueVencimentoPage = () => {
         <div className="bg-white rounded-lg shadow p-8 text-center">
           <PackageX className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h2 className="text-lg font-medium text-gray-700 mb-2">Nenhum relatório em andamento</h2>
-          <p className="text-gray-500 mb-6">Clique no botão abaixo para carregar os produtos acabados do ERP e iniciar a contagem.</p>
+          <p className="text-gray-500 mb-6">Selecione o depósito e clique para carregar os produtos acabados do ERP.</p>
+          
+          <div className="max-w-xs mx-auto mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Depósito da Contagem</label>
+            <select
+              value={selectedDeposito}
+              onChange={(e) => setSelectedDeposito(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Selecione o depósito...</option>
+              <option value="Depósito 1">Depósito 1</option>
+              <option value="Depósito 2">Depósito 2</option>
+              <option value="Depósito 3">Depósito 3</option>
+              <option value="Depósito 4">Depósito 4</option>
+              <option value="Depósito 5">Depósito 5</option>
+            </select>
+          </div>
+          
           <button
             onClick={handleSyncERP}
-            disabled={syncing}
+            disabled={syncing || !selectedDeposito}
             className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50"
           >
             <RefreshCw className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`} />
-            {syncing ? 'Carregando...' : 'Carregar Produtos do ERP'}
+            {syncing ? 'Carregando...' : 'Iniciar Contagem'}
           </button>
         </div>
       </div>
@@ -231,11 +239,12 @@ const EstoqueVencimentoPage = () => {
           <h1 className="text-2xl font-bold text-gray-900">Estoque e Vencimento</h1>
           <p className="text-gray-600 mt-1">
             Responsável: <span className="font-medium">{report.criado_por_nome}</span> | 
+            {report.deposito && <><span className="font-medium"> {report.deposito}</span> | </>}
             Iniciado em: {formatDateTime(report.data_snapshot)}
           </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setShowDepositoModal(true)} disabled={syncing} className="flex items-center gap-1 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
+          <button onClick={() => { setSyncing(true); api.post('/estoque-vencimento/sync-erp', { deposito: report.deposito }).then(r => setReport(r.data)).catch(() => alert('Erro ao atualizar ERP')).finally(() => setSyncing(false)); }} disabled={syncing} className="flex items-center gap-1 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
             <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
             Atualizar ERP
           </button>
@@ -449,69 +458,6 @@ const EstoqueVencimentoPage = () => {
         )}
       </div>
 
-      {/* Modal de Seleção de Depósitos */}
-      {showDepositoModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-medium mb-4">Selecionar Depósitos</h3>
-            <p className="text-sm text-gray-600 mb-4">Escolha quais depósitos incluir na busca de produtos:</p>
-            
-            <div className="space-y-2 mb-6">
-              {depositosOptions.map(deposito => (
-                <label key={deposito.id} className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={selectedDepositos.includes(deposito.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedDepositos([...selectedDepositos, deposito.id]);
-                      } else {
-                        setSelectedDepositos(selectedDepositos.filter(d => d !== deposito.id));
-                      }
-                    }}
-                    className="mr-3 rounded text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="text-sm">{deposito.label}</span>
-                </label>
-              ))}
-            </div>
-
-            <div className="flex justify-between">
-              <div>
-                <button
-                  onClick={() => setSelectedDepositos([1, 2, 3, 4, 5])}
-                  className="text-sm text-blue-600 hover:underline mr-4"
-                >
-                  Selecionar Todos
-                </button>
-                <button
-                  onClick={() => setSelectedDepositos([])}
-                  className="text-sm text-gray-500 hover:underline"
-                >
-                  Limpar
-                </button>
-              </div>
-              
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowDepositoModal(false)}
-                  className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleSyncERP}
-                  disabled={selectedDepositos.length === 0 || syncing}
-                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {syncing ? 'Carregando...' : 'Carregar Produtos'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Print View (hidden) */}
       <div style={{ display: 'none' }}>
         <div ref={printRef} style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
@@ -520,7 +466,9 @@ const EstoqueVencimentoPage = () => {
             <div style={{ flexGrow: 1, textAlign: 'center' }}>
               <h1 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>ESTOQUE E VENCIMENTO</h1>
               <p style={{ fontSize: '12px', color: '#666', margin: '4px 0 0' }}>
-                Responsável: {report.criado_por_nome} | Data: {formatDateTime(report.data_snapshot)}
+                Responsável: {report.criado_por_nome}
+                {report.deposito && ` | ${report.deposito}`}
+                {' | '}Data: {formatDateTime(report.data_snapshot)}
               </p>
             </div>
           </div>
