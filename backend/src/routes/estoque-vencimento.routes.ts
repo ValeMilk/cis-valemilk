@@ -25,7 +25,11 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
     const userDoc = await User.findById(user.id).select('nome');
     const nomeUsuario = userDoc?.nome || user.email;
 
-    const erpItems = await executeERPQuery<ERPEstoqueVencimentoItem>(getEstoqueVencimentoQuery());
+    // Obter depósitos selecionados (padrão: todos)
+    const { depositos = [1, 2, 3, 4, 5] } = req.body;
+
+    console.log(`🔄 Carregando produtos acabados do ERP para depósitos: ${depositos.join(', ')}`);
+    const erpItems = await executeERPQuery<ERPEstoqueVencimentoItem>(getEstoqueVencimentoQuery(depositos));
     console.log(`✅ ${erpItems.length} produtos acabados carregados do ERP para Estoque e Vencimento`);
 
     const itens: IEstoqueVencimentoItem[] = erpItems.map(erpItem => ({

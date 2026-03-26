@@ -37,6 +37,18 @@ const EstoqueVencimentoPage = () => {
   const [addingEntryFor, setAddingEntryFor] = useState<string | null>(null);
   const [newQuantidade, setNewQuantidade] = useState<string>('');
   const [newValidade, setNewValidade] = useState<string>('');
+  
+  // Seleção de depósitos
+  const [selectedDepositos, setSelectedDepositos] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [showDepositoModal, setShowDepositoModal] = useState(false);
+
+  const depositosOptions = [
+    { id: 1, label: 'Depósito 1' },
+    { id: 2, label: 'Depósito 2' },
+    { id: 3, label: 'Depósito 3' },
+    { id: 4, label: 'Depósito 4' },
+    { id: 5, label: 'Depósito 5' }
+  ];
 
   const printRef = useRef<HTMLDivElement>(null);
   const handlePrint = useReactToPrint({ contentRef: printRef });
@@ -58,10 +70,16 @@ const EstoqueVencimentoPage = () => {
   };
 
   const handleSyncERP = async () => {
+    if (selectedDepositos.length === 0) {
+      alert('Selecione pelo menos um depósito');
+      return;
+    }
+
     try {
       setSyncing(true);
-      const res = await api.post('/estoque-vencimento/sync-erp');
+      const res = await api.post('/estoque-vencimento/sync-erp', { depositos: selectedDepositos });
       setReport(res.data);
+      setShowDepositoModal(false);
     } catch (error) {
       console.error('Erro ao sincronizar ERP:', error);
       alert('Erro ao carregar produtos do ERP');
@@ -217,7 +235,7 @@ const EstoqueVencimentoPage = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={handleSyncERP} disabled={syncing} className="flex items-center gap-1 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
+          <button onClick={() => setShowDepositoModal(true)} disabled={syncing} className="flex items-center gap-1 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
             <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
             Atualizar ERP
           </button>
@@ -431,14 +449,80 @@ const EstoqueVencimentoPage = () => {
         )}
       </div>
 
+      {/* Modal de Seleção de Depósitos */}
+      {showDepositoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-medium mb-4">Selecionar Depósitos</h3>
+            <p className="text-sm text-gray-600 mb-4">Escolha quais depósitos incluir na busca de produtos:</p>
+            
+            <div className="space-y-2 mb-6">
+              {depositosOptions.map(deposito => (
+                <label key={deposito.id} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedDepositos.includes(deposito.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedDepositos([...selectedDepositos, deposito.id]);
+                      } else {
+                        setSelectedDepositos(selectedDepositos.filter(d => d !== deposito.id));
+                      }
+                    }}
+                    className="mr-3 rounded text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm">{deposito.label}</span>
+                </label>
+              ))}
+            </div>
+
+            <div className="flex justify-between">
+              <div>
+                <button
+                  onClick={() => setSelectedDepositos([1, 2, 3, 4, 5])}
+                  className="text-sm text-blue-600 hover:underline mr-4"
+                >
+                  Selecionar Todos
+                </button>
+                <button
+                  onClick={() => setSelectedDepositos([])}
+                  className="text-sm text-gray-500 hover:underline"
+                >
+                  Limpar
+                </button>
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowDepositoModal(false)}
+                  className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSyncERP}
+                  disabled={selectedDepositos.length === 0 || syncing}
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {syncing ? 'Carregando...' : 'Carregar Produtos'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Print View (hidden) */}
       <div style={{ display: 'none' }}>
         <div ref={printRef} style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-          <div style={{ textAlign: 'center', marginBottom: '20px', borderBottom: '2px solid #000', paddingBottom: '10px' }}>
-            <h1 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>VALE MILK - Estoque e Vencimento</h1>
-            <p style={{ fontSize: '12px', color: '#666', margin: '4px 0 0' }}>
-              Responsável: {report.criado_por_nome} | Data: {formatDateTime(report.data_snapshot)}
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', borderBottom: '2px solid #000', paddingBottom: '10px' }}>
+            <img src="/assets/valemilk-logo.png" alt="Vale Milk" style={{ height: '40px', marginRight: '15px' }} />
+            <div style={{ flexGrow: 1, textAlign: 'center' }}>
+              <h1 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>ESTOQUE E VENCIMENTO</h1>
+              <p style={{ fontSize: '12px', color: '#666', margin: '4px 0 0' }}>
+                Responsável: {report.criado_por_nome} | Data: {formatDateTime(report.data_snapshot)}
+              </p>
+            </div>
           </div>
 
           {/* Resumo */}

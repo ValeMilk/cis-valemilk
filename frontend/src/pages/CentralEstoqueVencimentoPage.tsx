@@ -330,12 +330,15 @@ const CentralEstoqueVencimentoPage = () => {
         {/* Print */}
         <div style={{ display: 'none' }}>
           <div ref={printRef} style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-            <div style={{ textAlign: 'center', marginBottom: '20px', borderBottom: '2px solid #000', paddingBottom: '10px' }}>
-              <h1 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>VALE MILK - Estoque e Vencimento</h1>
-              <p style={{ fontSize: '12px', color: '#666', margin: '4px 0 0' }}>
-                Responsável: {selectedReport.criado_por_nome} | Data: {formatDateTime(selectedReport.data_snapshot)}
-                {selectedReport.data_finalizacao && ` | Finalizado: ${formatDateTime(selectedReport.data_finalizacao)}`}
-              </p>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', borderBottom: '2px solid #000', paddingBottom: '10px' }}>
+              <img src="/assets/valemilk-logo.png" alt="Vale Milk" style={{ height: '40px', marginRight: '15px' }} />
+              <div style={{ flexGrow: 1, textAlign: 'center' }}>
+                <h1 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>ESTOQUE E VENCIMENTO</h1>
+                <p style={{ fontSize: '12px', color: '#666', margin: '4px 0 0' }}>
+                  Responsável: {selectedReport.criado_por_nome} | Data: {formatDateTime(selectedReport.data_snapshot)}
+                  {selectedReport.data_finalizacao && ` | Finalizado: ${formatDateTime(selectedReport.data_finalizacao)}`}
+                </p>
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: '20px', marginBottom: '15px', fontSize: '12px' }}>
