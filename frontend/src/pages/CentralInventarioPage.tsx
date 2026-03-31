@@ -186,13 +186,13 @@ const CentralInventarioPage = () => {
     if (!detalhe) return [];
     let items = [...detalhe.itens];
 
-    // Filtrar por depósito com saldo
+    // Filtrar por depósito com saldo (inclui negativos) ou com contagem
     if (depositoView === 'aberto') {
-      items = items.filter(i => i.dep_aberto_interno > 0 || i.producoes_aberto > 0);
+      items = items.filter(i => i.dep_aberto_interno !== 0 || i.producoes_aberto !== 0 || i.contagem_aberto !== null);
     } else if (depositoView === 'fechado_ext') {
-      items = items.filter(i => i.dep_fechado_externo > 0);
+      items = items.filter(i => i.dep_fechado_externo !== 0 || i.contagem_fechado_ext !== null);
     } else {
-      items = items.filter(i => i.dep_fechado_interno > 0);
+      items = items.filter(i => i.dep_fechado_interno !== 0 || i.contagem_fechado_int !== null);
     }
 
     if (tipoFilter) {
