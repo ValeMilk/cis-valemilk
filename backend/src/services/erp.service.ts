@@ -435,7 +435,7 @@ export const getInventarioQuery = (): string => {
           AND M00.M00_ID_EMP IN (80, 81, 82)
           AND (
               M00.M00_STATUS = 'N' 
-              OR (M00.M00_STATUS = 'I' AND E02.E02_TIPO = 7)
+              OR (M00.M00_STATUS = 'I' AND E02.E02_TIPO  IN (2, 7))
           )
           AND E02.E02_TIPO IN (1, 2, 4, 7, 10)
           AND (E02.E02_TIPO <> 4 OR E02.E02_ID_E23 IN (5,6,7,8,9))
