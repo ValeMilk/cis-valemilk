@@ -83,6 +83,106 @@ router.post('/sync-erp', authMiddleware, async (req, res) => {
   }
 });
 
+// POST - Criar/sincronizar relatório ativo via inventário (sem ERP, preserva itens existentes)
+// Usado quando o usuário adiciona lotes pelo InventarioPage sem ter aberto o Est.Vencimento antes
+router.post('/sync-inventario', authMiddleware, async (req, res) => {
+  try {
+    const user = (req as any).user;
+    const userDoc = await User.findById(user.id).select('nome');
+    const nomeUsuario = userDoc?.nome || user.email;
+    const { deposito = '' } = req.body;
+
+    const existente = await EstoqueVencimento.findOne({ status: 'em_andamento' });
+    if (existente) {
+      return res.json(existente);
+    }
+
+    // Criar relatório vazio - sem buscar ERP, itens serão adicionados on-demand
+    const novo = new EstoqueVencimento({
+      data_snapshot: new Date(),
+      status: 'em_andamento',
+      criado_por: user.id,
+      criado_por_nome: nomeUsuario,
+      deposito,
+      itens: []
+    });
+    await novo.save();
+    res.json(novo);
+  } catch (error) {
+    console.error('❌ Erro ao criar relatório via inventário:', error);
+    res.status(500).json({ message: 'Erro ao criar relatório' });
+  }
+});
+
+// PUT - Upsert de lotes por item (substitui se mesma data, adiciona se data nova)
+// Recebe: { lotes: [{ quantidade, data_validade }], item_info: { descricao, unidade_medida, ... } }
+router.put('/:reportId/item/:codigoItem/lotes', authMiddleware, async (req, res) => {
+  try {
+    const { reportId, codigoItem } = req.params;
+    const { lotes, item_info } = req.body;
+    const user = (req as any).user;
+    const userDoc = await User.findById(user.id).select('nome');
+    const nomeUsuario = userDoc?.nome || user.email;
+
+    const report = await EstoqueVencimento.findById(reportId);
+    if (!report) return res.status(404).json({ message: 'Relatório não encontrado' });
+    if (report.status !== 'em_andamento') return res.status(400).json({ message: 'Relatório já finalizado' });
+
+    let itemIndex = report.itens.findIndex((i: any) => i.codigo_item === codigoItem);
+
+    // Criar item no relatório se ainda não existe
+    if (itemIndex === -1) {
+      report.itens.push({
+        codigo_item: codigoItem,
+        descricao: item_info?.descricao || '',
+        unidade_medida: item_info?.unidade_medida || '',
+        tipo_volume: item_info?.tipo_volume || '',
+        unidades_por_volume: item_info?.unidades_por_volume || 0,
+        entradas: []
+      } as any);
+      itemIndex = report.itens.length - 1;
+    }
+
+    const item = report.itens[itemIndex] as any;
+    const entradas: any[] = item.entradas || [];
+
+    for (const lote of lotes) {
+      const dataValidade = new Date(lote.data_validade);
+      // Normalizar para comparar apenas a data (sem hora)
+      const dataStr = dataValidade.toISOString().split('T')[0];
+
+      const existIdx = entradas.findIndex((e: any) => {
+        const eStr = new Date(e.data_validade).toISOString().split('T')[0];
+        return eStr === dataStr;
+      });
+
+      if (existIdx >= 0) {
+        // Substitui - mesma data de validade
+        entradas[existIdx].quantidade = Number(lote.quantidade);
+        entradas[existIdx].registro_data = new Date();
+        entradas[existIdx].registro_usuario = nomeUsuario;
+      } else {
+        // Nova data - adiciona
+        entradas.push({
+          quantidade: Number(lote.quantidade),
+          data_validade: dataValidade,
+          registro_data: new Date(),
+          registro_usuario: nomeUsuario
+        });
+      }
+    }
+
+    item.entradas = entradas;
+    report.markModified('itens');
+    await report.save();
+
+    res.json({ message: 'Lotes atualizados', item });
+  } catch (error) {
+    console.error('❌ Erro ao atualizar lotes:', error);
+    res.status(500).json({ message: 'Erro ao atualizar lotes' });
+  }
+});
+
 // POST - Adicionar entrada de vencimento a um item
 router.post('/:reportId/item/:codigoItem/entrada', authMiddleware, async (req, res) => {
   try {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Package, Search, RefreshCw, CheckCircle, Clock, AlertTriangle, Trash2, WifiOff, Wifi, Printer, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { Package, Search, RefreshCw, CheckCircle, Clock, AlertTriangle, Trash2, WifiOff, Wifi, Printer, ArrowUp, ArrowDown, ArrowUpDown, CalendarDays, Plus, X } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import api from '../services/api';
 
@@ -115,6 +115,13 @@ const InventarioPage = () => {
   const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const debounceObsTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const printRef = useRef<HTMLDivElement>(null);
+
+  // Modal de Estoque & Vencimento
+  interface LoteModal { quantidade: string; data_validade: string; }
+  const [vencimentoModal, setVencimentoModal] = useState<InventarioItem | null>(null);
+  const [lotes, setLotes] = useState<LoteModal[]>([{ quantidade: '', data_validade: '' }]);
+  const [savingLotes, setSavingLotes] = useState(false);
+  const [estoqueReportId, setEstoqueReportId] = useState<string | null>(null);
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -554,6 +561,62 @@ const InventarioPage = () => {
     }, 800);
   };
 
+  const abrirVencimentoModal = async (item: InventarioItem) => {
+    setVencimentoModal(item);
+    setLotes([{ quantidade: '', data_validade: '' }]);
+    setSavingLotes(false);
+    // Buscar ou criar relatório de estoque/vencimento ativo
+    try {
+      const resp = await api.get('/estoque-vencimento/active');
+      if (resp.data) {
+        setEstoqueReportId(resp.data._id);
+        // Pré-popular lotes do item se já existir no relatório
+        const itemExistente = resp.data.itens?.find((i: any) => i.codigo_item === item.codigo_item);
+        if (itemExistente?.entradas?.length > 0) {
+          setLotes(itemExistente.entradas.map((e: any) => ({
+            quantidade: String(e.quantidade),
+            data_validade: new Date(e.data_validade).toISOString().split('T')[0]
+          })));
+        }
+      } else {
+        // Criar relatório vazio
+        const createResp = await api.post('/estoque-vencimento/sync-inventario', {
+          deposito: depositoFilter
+        });
+        setEstoqueReportId(createResp.data._id);
+      }
+    } catch {
+      // Ignora erro silenciosamente - usuário vê o modal mesmo assim
+    }
+  };
+
+  const salvarLotes = async () => {
+    if (!estoqueReportId || !vencimentoModal) return;
+    const lotesValidos = lotes.filter(l => l.quantidade !== '' && l.data_validade !== '');
+    if (lotesValidos.length === 0) return;
+
+    setSavingLotes(true);
+    try {
+      await api.put(`/estoque-vencimento/${estoqueReportId}/item/${vencimentoModal.codigo_item}/lotes`, {
+        lotes: lotesValidos.map(l => ({
+          quantidade: parseFloat(l.quantidade),
+          data_validade: l.data_validade
+        })),
+        item_info: {
+          descricao: vencimentoModal.descricao,
+          unidade_medida: vencimentoModal.unidade_medida,
+          tipo_volume: vencimentoModal.tipo_volume,
+          unidades_por_volume: vencimentoModal.unidades_por_volume
+        }
+      });
+      setVencimentoModal(null);
+    } catch {
+      alert('Erro ao salvar lotes de vencimento');
+    } finally {
+      setSavingLotes(false);
+    }
+  };
+
   const finalizarInventario = async () => {
     if (!inventario) return;
     
@@ -916,7 +979,18 @@ const InventarioPage = () => {
                           {item.codigo_item}
                         </td>
                         <td className="px-3 py-2 text-sm text-gray-900 max-w-xs truncate" title={item.descricao}>
-                          {item.descricao}
+                          <div className="flex items-center gap-1">
+                            <span className="truncate">{item.descricao}</span>
+                            {item.tipo === 'Produto Acabado' && inventario.status === 'em_andamento' && (
+                              <button
+                                title="Registrar Estoque & Vencimento"
+                                onClick={() => abrirVencimentoModal(item)}
+                                className="shrink-0 text-blue-400 hover:text-blue-600 transition-colors"
+                              >
+                                <CalendarDays size={15} />
+                              </button>
+                            )}
+                          </div>
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-center hidden sm:table-cell">
                           {abcMap[item.codigo_item] && (
@@ -1046,6 +1120,97 @@ const InventarioPage = () => {
             </div>
           </div>
         </>
+      )}
+
+      {/* ===== MODAL ESTOQUE & VENCIMENTO ===== */}
+      {vencimentoModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
+            <div className="flex items-center justify-between px-5 py-4 border-b">
+              <div>
+                <div className="flex items-center gap-2 text-blue-700">
+                  <CalendarDays size={18} />
+                  <h3 className="font-semibold">Estoque &amp; Vencimento</h3>
+                </div>
+                <p className="text-sm text-gray-500 mt-0.5 truncate max-w-sm" title={vencimentoModal.descricao}>
+                  {vencimentoModal.codigo_item} — {vencimentoModal.descricao}
+                </p>
+              </div>
+              <button onClick={() => setVencimentoModal(null)} className="text-gray-400 hover:text-gray-600">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="px-5 py-4 space-y-3">
+              <div className="grid grid-cols-[1fr_auto_auto] gap-2 text-xs font-medium text-gray-500 uppercase px-1">
+                <span>Data de Validade</span>
+                <span className="text-right">Quantidade ({vencimentoModal.unidade_medida || 'un'})</span>
+                <span />
+              </div>
+
+              {lotes.map((lote, idx) => (
+                <div key={idx} className="grid grid-cols-[1fr_auto_auto] gap-2 items-center">
+                  <input
+                    type="date"
+                    value={lote.data_validade}
+                    onChange={e => {
+                      const updated = [...lotes];
+                      updated[idx] = { ...updated[idx], data_validade: e.target.value };
+                      setLotes(updated);
+                    }}
+                    className="border rounded px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-500"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={lote.quantidade}
+                    onChange={e => {
+                      const updated = [...lotes];
+                      updated[idx] = { ...updated[idx], quantidade: e.target.value };
+                      setLotes(updated);
+                    }}
+                    className="w-28 border rounded px-2 py-1.5 text-sm text-right focus:ring-2 focus:ring-blue-500"
+                    placeholder="0"
+                  />
+                  {lotes.length > 1 ? (
+                    <button
+                      onClick={() => setLotes(lotes.filter((_, i) => i !== idx))}
+                      className="text-red-400 hover:text-red-600 p-1"
+                    >
+                      <X size={15} />
+                    </button>
+                  ) : (
+                    <div className="w-7" />
+                  )}
+                </div>
+              ))}
+
+              <button
+                onClick={() => setLotes([...lotes, { quantidade: '', data_validade: '' }])}
+                className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 mt-1"
+              >
+                <Plus size={14} /> Adicionar lote
+              </button>
+            </div>
+
+            <div className="flex justify-end gap-2 px-5 py-3 border-t bg-gray-50 rounded-b-xl">
+              <button
+                onClick={() => setVencimentoModal(null)}
+                className="px-4 py-2 border rounded hover:bg-gray-100 text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={salvarLotes}
+                disabled={savingLotes || lotes.every(l => l.quantidade === '' || l.data_validade === '')}
+                className="px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm disabled:opacity-50"
+              >
+                {savingLotes ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ===== PRINT VIEW (oculto) ===== */}
