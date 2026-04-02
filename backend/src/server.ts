@@ -12,6 +12,7 @@ import inventarioFilialRoutes from './routes/inventario-filial.routes';
 import avariaRoutes from './routes/avaria.routes';
 import reposicaoRoutes from './routes/reposicao.routes';
 import estoqueVencimentoRoutes from './routes/estoque-vencimento.routes';
+import solicitacaoCompraRoutes from './routes/solicitacao-compra.routes';
 
 dotenv.config();
 
@@ -36,6 +37,7 @@ app.use('/api/inventario-filial', inventarioFilialRoutes);
 app.use('/api/avaria', avariaRoutes);
 app.use('/api/reposicao', reposicaoRoutes);
 app.use('/api/estoque-vencimento', estoqueVencimentoRoutes);
+app.use('/api/solicitacoes-compra', solicitacaoCompraRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

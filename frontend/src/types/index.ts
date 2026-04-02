@@ -184,3 +184,37 @@ export interface DashboardData {
     data_prevista_entrega?: string;
   }>;
 }
+
+export enum StatusSolicitacao {
+  NOVA = 'NOVA',
+  EM_COTACAO = 'EM_COTACAO',
+  PEDIDO_FECHADO = 'PEDIDO_FECHADO',
+  EM_TRANSITO = 'EM_TRANSITO',
+  RECEBIDO = 'RECEBIDO'
+}
+
+export interface ItemSolicitacao {
+  descricao: string;
+  quantidade: string;
+}
+
+export interface HistoricoStatusSolicitacao {
+  status: StatusSolicitacao;
+  usuario_id: string;
+  usuario_nome: string;
+  data: string;
+  observacao?: string;
+}
+
+export interface SolicitacaoCompra {
+  _id: string;
+  assunto: string;
+  descricao?: string;
+  itens: ItemSolicitacao[];
+  status_atual: StatusSolicitacao;
+  solicitante_id: string;
+  solicitante_nome: string;
+  historico_status: HistoricoStatusSolicitacao[];
+  createdAt: string;
+  updatedAt: string;
+}

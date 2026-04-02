@@ -18,6 +18,7 @@ import AvariaPage from './pages/AvariaPage';
 import CentralAvariaPage from './pages/CentralAvariaPage';
 import EstoqueVencimentoPage from './pages/EstoqueVencimentoPage';
 import CentralEstoqueVencimentoPage from './pages/CentralEstoqueVencimentoPage';
+import SolicitacoesCompraPage from './pages/SolicitacoesCompraPage';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -200,6 +201,16 @@ function App() {
           <ProtectedRoute>
             <Layout>
               <CentralEstoqueVencimentoPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/solicitacoes-compra"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <SolicitacoesCompraPage />
             </Layout>
           </ProtectedRoute>
         }
