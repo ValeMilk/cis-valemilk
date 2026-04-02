@@ -128,27 +128,35 @@ router.put('/:reportId/item/:codigoItem/lotes', authMiddleware, async (req, res)
     if (!report) return res.status(404).json({ message: 'Relatório não encontrado' });
     if (report.status !== 'em_andamento') return res.status(400).json({ message: 'Relatório já finalizado' });
 
-    let itemIndex = report.itens.findIndex((i: any) => i.codigo_item === codigoItem);
+    // Buscar o item existente dentro do relatório
+    let itemDoc = report.itens.find((i: any) => i.codigo_item === codigoItem);
 
-    // Criar item no relatório se ainda não existe
-    if (itemIndex === -1) {
-      report.itens.push({
-        codigo_item: codigoItem,
-        descricao: item_info?.descricao || '',
-        unidade_medida: item_info?.unidade_medida || '',
-        tipo_volume: item_info?.tipo_volume || '',
-        unidades_por_volume: item_info?.unidades_por_volume || 0,
-        entradas: []
-      } as any);
-      itemIndex = report.itens.length - 1;
+    // Se o item não existe no relatório, criá-lo primeiro
+    if (!itemDoc) {
+      await EstoqueVencimento.updateOne(
+        { _id: reportId },
+        {
+          $push: {
+            itens: {
+              codigo_item: codigoItem,
+              descricao: item_info?.descricao || '',
+              unidade_medida: item_info?.unidade_medida || '',
+              tipo_volume: item_info?.tipo_volume || '',
+              unidades_por_volume: item_info?.unidades_por_volume || 0,
+              entradas: []
+            }
+          }
+        }
+      );
+      // Re-buscar para obter o item criado
+      const updatedReport = await EstoqueVencimento.findById(reportId);
+      itemDoc = updatedReport!.itens.find((i: any) => i.codigo_item === codigoItem);
     }
 
-    const item = report.itens[itemIndex] as any;
-    const entradas: any[] = item.entradas || [];
+    const entradas: any[] = (itemDoc as any).entradas ? [...(itemDoc as any).entradas] : [];
 
     for (const lote of lotes) {
       const dataValidade = new Date(lote.data_validade);
-      // Normalizar para comparar apenas a data (sem hora)
       const dataStr = dataValidade.toISOString().split('T')[0];
 
       const existIdx = entradas.findIndex((e: any) => {
@@ -157,12 +165,13 @@ router.put('/:reportId/item/:codigoItem/lotes', authMiddleware, async (req, res)
       });
 
       if (existIdx >= 0) {
-        // Substitui - mesma data de validade
-        entradas[existIdx].quantidade = Number(lote.quantidade);
-        entradas[existIdx].registro_data = new Date();
-        entradas[existIdx].registro_usuario = nomeUsuario;
+        entradas[existIdx] = {
+          quantidade: Number(lote.quantidade),
+          data_validade: dataValidade,
+          registro_data: new Date(),
+          registro_usuario: nomeUsuario
+        };
       } else {
-        // Nova data - adiciona
         entradas.push({
           quantidade: Number(lote.quantidade),
           data_validade: dataValidade,
@@ -172,11 +181,17 @@ router.put('/:reportId/item/:codigoItem/lotes', authMiddleware, async (req, res)
       }
     }
 
-    item.entradas = entradas;
-    report.markModified('itens');
-    await report.save();
+    // Atomic update usando $set no array de entradas do item específico
+    await EstoqueVencimento.updateOne(
+      { _id: reportId, 'itens.codigo_item': codigoItem },
+      { $set: { 'itens.$.entradas': entradas } }
+    );
 
-    res.json({ message: 'Lotes atualizados', item });
+    // Retornar o item atualizado
+    const finalReport = await EstoqueVencimento.findById(reportId);
+    const finalItem = finalReport!.itens.find((i: any) => i.codigo_item === codigoItem);
+
+    res.json({ message: 'Lotes atualizados', item: finalItem });
   } catch (error) {
     console.error('❌ Erro ao atualizar lotes:', error);
     res.status(500).json({ message: 'Erro ao atualizar lotes' });

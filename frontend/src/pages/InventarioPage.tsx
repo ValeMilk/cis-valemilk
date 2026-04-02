@@ -632,6 +632,20 @@ const InventarioPage = () => {
 
     try {
       await api.put(`/inventario/${inventario._id}/finalizar`);
+
+      // Finalizar Est.Vencimento ativo automaticamente (se existir com lotes)
+      try {
+        const evResp = await api.get('/estoque-vencimento/active');
+        if (evResp.data?._id) {
+          const temEntradas = evResp.data.itens?.some((i: any) => i.entradas?.length > 0);
+          if (temEntradas) {
+            await api.put(`/estoque-vencimento/${evResp.data._id}/finalizar`);
+          }
+        }
+      } catch {
+        // Silencioso - não impedir finalização do inventário
+      }
+
       setInventario(prev => prev ? { ...prev, status: 'finalizado' } : prev);
       setCachedInventario(null);
       alert('Inventário finalizado com sucesso!');
