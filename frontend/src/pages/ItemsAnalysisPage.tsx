@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, Search, ShoppingCart, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import api from '../services/api';
-import { Item, StatusPedido } from '../types';
+import { Item, StatusPedido, PerfilEnum } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 import MultiSelectDropdown from '../components/MultiSelectDropdown';
 
 const ItemsAnalysisPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isReadOnly = user?.perfil === PerfilEnum.RECEBIMENTO;
   const [items, setItems] = useState<Item[]>([]);
   const [filteredItems, setFilteredItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
@@ -463,7 +466,7 @@ const ItemsAnalysisPage = () => {
             Analise estoque, giro e preços antes de criar pedidos de compra
           </p>
         </div>
-        {selectedItems.size > 0 && (
+        {!isReadOnly && selectedItems.size > 0 && (
           <button
             onClick={handleCreatePedido}
             className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
@@ -614,10 +617,12 @@ const ItemsAnalysisPage = () => {
               {filteredItems.filter((i) => i.classe_abc === 'B').length}
             </p>
           </div>
-          <div className="text-center">
-            <p className="text-sm text-gray-600">Selecionados</p>
-            <p className="text-2xl font-bold text-blue-600">{selectedItems.size}</p>
-          </div>
+          {!isReadOnly && (
+            <div className="text-center">
+              <p className="text-sm text-gray-600">Selecionados</p>
+              <p className="text-2xl font-bold text-blue-600">{selectedItems.size}</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -627,6 +632,7 @@ const ItemsAnalysisPage = () => {
           <table className="w-full divide-y divide-gray-200" style={{ fontSize: '0.65rem', tableLayout: 'auto' }}>
             <thead className="bg-gray-50">
               <tr>
+                {!isReadOnly && (
                 <th className="px-0.5 py-1 text-left sticky left-0 bg-gray-50 z-10" style={{ width: '25px' }}>
                   <input
                     type="checkbox"
@@ -648,6 +654,7 @@ const ItemsAnalysisPage = () => {
                     className="rounded border-gray-300"
                   />
                 </th>
+                )}
                 <th 
                   className="px-0.5 py-1 text-left font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100" 
                   style={{ fontSize: '0.6rem' }}
@@ -777,6 +784,7 @@ const ItemsAnalysisPage = () => {
                       selectedItems.has(item.id) ? 'bg-blue-50' : ''
                     }`}
                   >
+                    {!isReadOnly && (
                     <td className={`px-0.5 py-0.5 sticky left-0 z-10 ${selectedItems.has(item.id) ? 'bg-blue-50' : 'bg-white'}`}>
                       <input
                         type="checkbox"
@@ -785,6 +793,7 @@ const ItemsAnalysisPage = () => {
                         className="rounded border-gray-300"
                       />
                     </td>
+                    )}
                     <td className="px-0.5 py-0.5 font-medium text-gray-900">
                       {item.codigo_item}
                     </td>

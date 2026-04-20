@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { Pedido, StatusPedido } from '../types';
+import { Pedido, StatusPedido, PerfilEnum } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 import { Plus, Eye, Search, Calendar, X } from 'lucide-react';
 import MultiSelectDropdown from '../components/MultiSelectDropdown';
 
@@ -19,6 +20,8 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 
 export default function PedidosPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isReadOnly = user?.perfil === PerfilEnum.RECEBIMENTO;
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchIdCompra, setSearchIdCompra] = useState('');
@@ -78,13 +81,15 @@ export default function PedidosPage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Pedidos</h1>
-        <button
-          onClick={() => navigate('/items')}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center space-x-2"
-        >
-          <Plus size={20} />
-          <span>Novo Pedido</span>
-        </button>
+        {!isReadOnly && (
+          <button
+            onClick={() => navigate('/items')}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center space-x-2"
+          >
+            <Plus size={20} />
+            <span>Novo Pedido</span>
+          </button>
+        )}
       </div>
 
       {/* Filtros */}

@@ -37,17 +37,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <Link to="/" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
               <LayoutDashboard size={16} /><span>Dashboard</span>
             </Link>
-            {user?.perfil !== PerfilEnum.RECEBIMENTO && user?.perfil !== PerfilEnum.FILIAL && (
+            {user?.perfil !== PerfilEnum.FILIAL && (
               <>
                 <Link to="/items" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
                   <Package size={16} /><span>Análise de Itens</span>
                 </Link>
-                <Link to="/historico-compras" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
-                  <BarChart3 size={16} /><span>Hist. Compras</span>
-                </Link>
-                <Link to="/fornecedores" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
-                  <Building2 size={16} /><span>Fornecedores</span>
-                </Link>
+                {user?.perfil !== PerfilEnum.RECEBIMENTO && (
+                  <>
+                    <Link to="/historico-compras" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
+                      <BarChart3 size={16} /><span>Hist. Compras</span>
+                    </Link>
+                    <Link to="/fornecedores" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
+                      <Building2 size={16} /><span>Fornecedores</span>
+                    </Link>
+                  </>
+                )}
                 <Link to="/pedidos" className="flex items-center space-x-1 px-3 py-1.5 rounded text-sm hover:bg-gray-100">
                   <ShoppingCart size={16} /><span>Pedidos</span>
                 </Link>
