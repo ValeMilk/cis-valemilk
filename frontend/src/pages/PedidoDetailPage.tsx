@@ -7,6 +7,7 @@ import { Pedido, Fornecedor, StatusPedido, PerfilEnum } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import PedidoPrintView from '../components/PedidoPrintView';
 import StatusStepper from '../components/StatusStepper';
+import PedidoPriceAnalysisChart from '../components/PedidoPriceAnalysisChart';
 
 const PedidoDetailPage = () => {
   const { id } = useParams();
@@ -784,6 +785,9 @@ const PedidoDetailPage = () => {
             </div>
 
           </div>
+
+          {/* Análise de Preço (gráfico) */}
+          <PedidoPriceAnalysisChart pedido={pedido} />
 
           {/* Informações Adicionais na Tela */}
           <div className="bg-white rounded-lg shadow p-6">
