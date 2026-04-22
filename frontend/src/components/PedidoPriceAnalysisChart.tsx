@@ -86,19 +86,22 @@ export default function PedidoPriceAnalysisChart({ pedido }: Props) {
   // Monta dados do gráfico: 4 pontos (Compra -3, -2, -1, Atual) com chave por codigo_item
   const chartData = useMemo(() => {
     const rows: Array<Record<string, number | string>> = [
-      { label: 'Compra -3' },
-      { label: 'Compra -2' },
-      { label: 'Compra -1' },
-      { label: 'Atual' },
+      { label: '' },
+      { label: '' },
+      { label: '' },
+      { label: '' },
     ];
+    // Guarda a primeira data encontrada em cada slot para usar no label do eixo X
+    const slotLabel: string[] = ['', '', '', ''];
 
     const dataCriacaoPedido = parseDate(pedido.data_criacao);
+    slotLabel[3] = formatDate(dataCriacaoPedido) || 'Atual';
 
     pedido.itens.forEach((item) => {
       if (!selectedCodigos.has(item.codigo_item)) return;
 
       const historico = historicos[item.codigo_item] || [];
-      // Excluir entradas posteriores à criação do pedido (evita duplicar o pedido atual)
+      // Excluir entradas posteriores à criação do pedido
       const filtrados = historico.filter((h) => {
         const d = parseDate(h.data_entrada);
         if (!d || !dataCriacaoPedido) return true;
@@ -114,16 +117,28 @@ export default function PedidoPriceAnalysisChart({ pedido }: Props) {
       const ultimas3 = ordenados.slice(0, 3).reverse();
 
       // Preencher pontos: posições 0,1,2 são as 3 últimas compras; posição 3 é o pedido atual
-      const offset = 3 - ultimas3.length; // se tiver só 1 ou 2 compras, deixa buracos à esquerda
+      const offset = 3 - ultimas3.length;
       ultimas3.forEach((h, i) => {
-        rows[offset + i][item.codigo_item] = Number(h.valor_unitario) || 0;
-        rows[offset + i][`${item.codigo_item}__data`] = formatDate(parseDate(h.data_entrada));
-        rows[offset + i][`${item.codigo_item}__fornecedor`] = h.fornecedor || '';
+        const slot = offset + i;
+        const dataFormatada = formatDate(parseDate(h.data_entrada));
+        rows[slot][item.codigo_item] = Number(h.valor_unitario) || 0;
+        rows[slot][`${item.codigo_item}__data`] = dataFormatada;
+        rows[slot][`${item.codigo_item}__fornecedor`] = h.fornecedor || '';
+        rows[slot][`${item.codigo_item}__qtd`] = Number(h.quantidade) || 0;
+        // Usa a primeira data encontrada neste slot como label do eixo X
+        if (!slotLabel[slot] && dataFormatada) slotLabel[slot] = dataFormatada;
       });
       rows[3][item.codigo_item] = Number(item.preco_unitario) || 0;
       rows[3][`${item.codigo_item}__data`] = formatDate(dataCriacaoPedido);
       rows[3][`${item.codigo_item}__fornecedor`] = pedido.fornecedor || '';
+      rows[3][`${item.codigo_item}__qtd`] = Number(item.quantidade_solicitada) || 0;
     });
+
+    // Aplica labels: data real se disponível, senão fallback "Compra -N"
+    rows[0].label = slotLabel[0] || 'Compra -3';
+    rows[1].label = slotLabel[1] || 'Compra -2';
+    rows[2].label = slotLabel[2] || 'Compra -1';
+    rows[3].label = slotLabel[3] || 'Atual';
 
     return rows;
   }, [historicos, selectedCodigos, pedido]);
@@ -233,17 +248,41 @@ export default function PedidoPriceAnalysisChart({ pedido }: Props) {
                 }
               />
               <Tooltip
-                formatter={(value: number, name: string, entry: any) => {
-                  const descricao = descricaoByCodigo[name] || name;
-                  const payload = entry?.payload || {};
-                  const data = payload[`${name}__data`];
-                  const fornecedor = payload[`${name}__fornecedor`];
-                  const preco = `R$ ${Number(value).toLocaleString('pt-BR', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}`;
-                  const extras = [data, fornecedor].filter(Boolean).join(' · ');
-                  return [extras ? `${preco}  (${extras})` : preco, `${name} — ${descricao}`];
+                content={({ active, payload, label }) => {
+                  if (!active || !payload || payload.length === 0) return null;
+                  return (
+                    <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-xs max-w-xs">
+                      <p className="font-semibold text-gray-700 mb-2 border-b pb-1">{label}</p>
+                      {payload.map((entry: any) => {
+                        const codigo = entry.dataKey as string;
+                        const descricao = descricaoByCodigo[codigo] || codigo;
+                        const pl = entry.payload || {};
+                        const data = pl[`${codigo}__data`] as string | undefined;
+                        const fornecedor = pl[`${codigo}__fornecedor`] as string | undefined;
+                        const qtd = pl[`${codigo}__qtd`] as number | undefined;
+                        const preco = Number(entry.value).toLocaleString('pt-BR', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        });
+                        return (
+                          <div key={codigo} className="mb-2 last:mb-0">
+                            <div className="flex items-center gap-1 font-semibold" style={{ color: entry.color }}>
+                              <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: entry.color }} />
+                              <span>{codigo} — {descricao.slice(0, 35)}</span>
+                            </div>
+                            <div className="ml-3.5 mt-0.5 space-y-0.5 text-gray-700">
+                              <div><span className="text-gray-500">Preço unitário:</span> <strong>R$ {preco}</strong></div>
+                              {qtd !== undefined && qtd > 0 && (
+                                <div><span className="text-gray-500">Quantidade:</span> <strong>{Number(qtd).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</strong></div>
+                              )}
+                              {data && <div><span className="text-gray-500">Data:</span> {data}</div>}
+                              {fornecedor && <div><span className="text-gray-500">Fornecedor:</span> {fornecedor}</div>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
                 }}
               />
               <Legend
