@@ -318,7 +318,7 @@ router.post('/:id/em-rota', authMiddleware, requireRole(PerfilEnum.COMPRADOR, Pe
 });
 
 // Recebimento de nota
-router.post('/:id/recebimento-nota', authMiddleware, requireRole(PerfilEnum.COMPRADOR, PerfilEnum.DIRETORIA, PerfilEnum.ADMIN), async (req: AuthRequest, res) => {
+router.post('/:id/recebimento-nota', authMiddleware, requireRole(PerfilEnum.COMPRADOR, PerfilEnum.DIRETORIA, PerfilEnum.ADMIN, PerfilEnum.RECEBIMENTO), async (req: AuthRequest, res) => {
   try {
     const pedido = await Pedido.findById(req.params.id);
     if (!pedido) {
@@ -330,12 +330,14 @@ router.post('/:id/recebimento-nota', authMiddleware, requireRole(PerfilEnum.COMP
     }
 
     const user = await User.findById(req.user!.id);
+    const dataRecebimento = new Date();
     pedido.status_atual = StatusPedido.RECEBIMENTO_NOTA;
+    pedido.data_recebimento = dataRecebimento;
     pedido.historico_status.push({
       status: StatusPedido.RECEBIMENTO_NOTA,
       usuario_id: user!._id,
       usuario_nome: user!.nome,
-      data: new Date(),
+      data: dataRecebimento,
       observacao: req.body.observacao
     });
 

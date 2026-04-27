@@ -62,6 +62,7 @@ export interface IPedido extends Document {
   data_faturamento?: Date;
   valor_nota_fiscal?: number;
   data_prevista_entrega?: Date;
+  data_recebimento?: Date;
   observacoes?: string;
   historico_status: IHistoricoStatus[];
   historico_edicoes: IHistoricoEdicao[];
@@ -112,6 +113,7 @@ const pedidoSchema = new Schema<IPedido>({
   data_faturamento: Date,
   valor_nota_fiscal: Number,
   data_prevista_entrega: Date,
+  data_recebimento: Date,
   observacoes: String,
   historico_status: [{
     status: { type: String, enum: Object.values(StatusPedido) },

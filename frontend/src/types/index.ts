@@ -88,6 +88,7 @@ export interface Pedido {
   data_faturamento?: string;
   valor_nota_fiscal?: number;
   data_prevista_entrega?: string;
+  data_recebimento?: string;
   observacoes?: string;
   historico_status: HistoricoStatus[];
   historico_edicoes: HistoricoEdicao[];

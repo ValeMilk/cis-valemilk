@@ -344,7 +344,12 @@ const PedidoDetailPage = () => {
       return false;
     }
 
-    // Apenas Admin, Comprador e Diretoria podem avançar status
+    // RECEBIMENTO só pode avançar de EM_ROTA → RECEBIMENTO_NOTA
+    if (user.perfil === PerfilEnum.RECEBIMENTO) {
+      return pedido.status_atual === StatusPedido.EM_ROTA;
+    }
+
+    // Admin, Comprador e Diretoria podem avançar qualquer status
     return user.perfil === PerfilEnum.COMPRADOR || 
            user.perfil === PerfilEnum.DIRETORIA || 
            user.perfil === PerfilEnum.ADMIN;
@@ -675,6 +680,7 @@ const PedidoDetailPage = () => {
                 numeroNotaFiscal={pedido.numero_nota_fiscal}
                 dataFaturamento={pedido.data_faturamento}
                 dataEntregaPrevista={pedido.data_prevista_entrega}
+                dataRecebimento={pedido.data_recebimento}
                 canEditAcompanhamento={canEditAcompanhamento()}
                 onEditPrevisao={handleOpenEditPrevisao}
                 onEditFaturamento={handleOpenEditFaturamento}
@@ -885,6 +891,16 @@ const PedidoDetailPage = () => {
                   </div>
                 );
               })()}
+
+              {/* Data de Recebimento */}
+              {pedido.data_recebimento && (
+                <div className="col-span-2 border-t pt-4 mt-2">
+                  <span className="text-gray-600">Data de Recebimento:</span>
+                  <span className="ml-2 font-medium text-blue-700">
+                    📦 {formatDateTime(pedido.data_recebimento)}
+                  </span>
+                </div>
+              )}
               
               <div>
                 <span className="text-gray-600">Total de Itens:</span>

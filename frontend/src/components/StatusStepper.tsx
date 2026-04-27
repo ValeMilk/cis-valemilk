@@ -8,6 +8,7 @@ interface StatusStepperProps {
   numeroNotaFiscal?: string;
   dataFaturamento?: string;
   dataEntregaPrevista?: string;
+  dataRecebimento?: string;
   canEditAcompanhamento?: boolean;
   onEditPrevisao?: () => void;
   onEditFaturamento?: () => void;
@@ -20,6 +21,7 @@ const StatusStepper: React.FC<StatusStepperProps> = ({
   numeroNotaFiscal,
   dataFaturamento,
   dataEntregaPrevista,
+  dataRecebimento,
   canEditAcompanhamento,
   onEditPrevisao,
   onEditFaturamento,
@@ -129,6 +131,18 @@ const StatusStepper: React.FC<StatusStepperProps> = ({
               </div>
             )}
             
+            {/* Mostrar data/hora de recebimento no passo "Recebimento de Nota" */}
+            {step.status === StatusPedido.RECEBIMENTO_NOTA && dataRecebimento && (
+              <div className="mt-2 text-center">
+                <p className="text-xs text-blue-700 font-semibold">
+                  📦 {new Date(dataRecebimento).toLocaleDateString('pt-BR')}
+                </p>
+                <p className="text-xs text-blue-600 font-bold mt-0.5">
+                  {new Date(dataRecebimento).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+            )}
+
             {/* Mostrar data de entrega no passo "Em Rota" */}
             {step.status === StatusPedido.EM_ROTA && dataEntregaPrevista && infoEntrega && (
               <div className="mt-2 text-center">
